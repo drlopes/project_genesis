@@ -1,0 +1,27 @@
+[workspace]
+resolver = "3"
+members = ["crates/genesis_core"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.99"
+publish = false
+
+[workspace.dependencies]
+# Generation-affecting: a version change is a potential generatorVersion change.
+# See docs/20-tech-stack-and-workspace.md#upgrade-policy.
+libm = "0.2"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+# Unoptimised Bevy is too slow to test with: optimise dependencies fully,
+# our own code lightly. See docs/20-tech-stack-and-workspace.md#toolchain-and-build-settings.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

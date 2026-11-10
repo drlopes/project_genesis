@@ -1,0 +1,5 @@
+# Pinned deliberately; bump on a dedicated branch with golden tests on Windows and Linux.
+# See docs/20-tech-stack-and-workspace.md#upgrade-policy.
+[toolchain]
+channel = "1.99.0"
+components = ["rustfmt", "clippy"]

@@ -1,0 +1,13 @@
+[package]
+name = "genesis_core"
+version = "0.1.0"
+description = "Deterministic foundations: seeds, counter RNG, and platform-independent maths."
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+libm.workspace = true
+
+[lints]
+workspace = true
