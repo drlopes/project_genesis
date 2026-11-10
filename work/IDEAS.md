@@ -17,12 +17,14 @@ they are not acted on directly.
 - **Decision:** parked until E4 shows whether throughput needs it.
 
 ### I-002 — Multi-channel noise for classification jitter
-- **Status:** new
+- **Status:** parked (revisit after E4)
 - **Raised:** 2026-11-10, from [E1](../docs/spikes/E1-field-cost.md#open-optimisations-not-needed-yet)
 - **What:** one lattice hash per corner, with different gradient bits per channel, so the four
   jitter axes cost about one noise evaluation instead of four.
 - **Why:** ~50 ns per sample; small, but jitter runs on every classified sample.
 - **Cost / risk:** new noise function to pin with known answers; low.
+- **Decision:** parked at the end of the work-structure goal: E1 is within budget, so this only
+  matters if E4 shows a throughput shortfall. Revisit together with I-001.
 
 ### I-003 — Mirror work items to GitHub Issues when collaborators join
 - **Status:** parked

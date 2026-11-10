@@ -5,7 +5,7 @@ Experiment definition: [21 — Phase 1 Spike Plan](../21-phase-1-spike-plan.md#e
 | | |
 |---|---|
 | Date | 2026-11-10 |
-| Commit | `61e6dc6` (harness in `spikes/field`, run with `cargo run --release --bin e1` from `spikes/`) |
+| Commit | `380400c`, `61e6dc6` before the 2026-11-10 history rewrite (harness in `spikes/field`, run with `cargo run --release --bin e1` from `spikes/`) |
 | Hardware | Ryzen 7 9800X3D, 32 GB, RTX 4060 (GPU unused), Windows 11 |
 | Build | release, Rust 1.99.0 |
 | Threads | 1 unless stated |

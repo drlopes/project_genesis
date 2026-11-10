@@ -5,7 +5,7 @@ Experiment definition: [21 — Phase 1 Spike Plan](../21-phase-1-spike-plan.md#e
 | | |
 |---|---|
 | Date | 2026-11-10 |
-| Commit | `908c5dc` (harness `spikes/field/src/bin/e2.rs`) |
+| Commit | `440f5b8` (harness `spikes/field/src/bin/e2.rs`); `908c5dc` before the 2026-11-10 history rewrite, same content |
 | Platforms | Windows 11 (reference machine); Windows and Ubuntu GitHub Actions runners |
 | Builds | release and debug |
 
@@ -32,7 +32,8 @@ Experiment definition: [21 — Phase 1 Spike Plan](../21-phase-1-spike-plan.md#e
 | Ubuntu, CI runner (`ubuntu-latest`) | release, debug | matches | matches |
 
 "Matches" means the `--check` step passed: both hashes equal the reference values exactly (CI run
-for commit `908c5dc`, all steps green on both platforms).
+for commit `908c5dc`, now `440f5b8` after the history rewrite with identical content; all steps
+green on both platforms).
 
 The harness itself was checked: with a deliberately wrong expected hash it exits with an error.
 

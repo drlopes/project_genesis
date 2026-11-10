@@ -45,10 +45,15 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 ### Fixed
 - An anchor in docs/05 that resolved locally but not on GitHub; the checker now uses GitHub's slug
   rules.
-- Build artefacts accidentally committed under `spikes/target/` removed from the tree; `target/` is
-  ignored at any depth. (Still present in the history of `61e6dc6`.)
+- Build artefacts accidentally committed under `spikes/target/` (11 MB) removed from the tree and,
+  by a history rewrite and force-push on 2026-11-10, from history; `target/` is ignored at any
+  depth. Commits from the E1 harness onward have new hashes; docs cite both where it matters.
 
 ### Docs
+- Phase 1 budget table reviewed and decided: per-frame budgets apply to the main thread only;
+  worker generation is a throughput target; added a worst-frame bound (≤ 33 ms while streaming),
+  total RAM (≤ 6 GB) and VRAM (≤ 6 GB) caps, and a build-time target for the Bevy app crate.
+  docs/10 frame-budget targets corrected to match.
 - E1 results: field cost passes its budgets; cost is driven by noise and repeated `h0`
   evaluations, not content count; craters need a spatial index; generation workers = physical
   cores.

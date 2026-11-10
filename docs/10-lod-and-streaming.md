@@ -266,14 +266,17 @@ ordering, promotion, and persistence rules are in
 
 ### Frame budget targets
 
-`PROPOSED` — targets to tune during vertical slice:
+Chunk generation and mesh building run on **worker threads**, so they have a throughput target,
+not a per-frame budget: the workers must keep up with the LOD-4 ring at rover speed (E4). The
+per-frame budget is for the **main thread**:
 
-- chunk generation: ≤ 2 ms per frame amortised,
-- mesh building: ≤ 2 ms per frame amortised,
-- LOD update: ≤ 1 ms,
+- integrating finished patches (GPU upload, spawning and despawning patch entities) plus the LOD
+  update: ≤ 2 ms per frame in total,
+- no frame above 33 ms while streaming,
 - draw calls: bounded by patch count; use instancing for scatter.
 
-These are tested by the [Phase 1 spike](./21-phase-1-spike-plan.md#reference-hardware-and-budgets).
+The full budget table, and the measurements against it, are in the
+[Phase 1 spike plan](./21-phase-1-spike-plan.md#reference-hardware-and-budgets).
 
 ---
 

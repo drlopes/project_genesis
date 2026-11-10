@@ -7,7 +7,7 @@ this goal or next · **S3** when convenient.
 
 ### B-001 — `rng::below` claims to be unbiased, but is not exactly
 - **Severity:** S3 · **Status:** open
-- **Found:** 2026-11-10, commit `e13d139`, while setting up the work structure (reviewing code
+- **Found:** 2026-11-10, commit `1eca196` (`e13d139` before the history rewrite), while setting up the work structure (reviewing code
   cited in a research card)
 - **Where:** `crates/genesis_core/src/rng.rs`, `below()`
 - **Expected:** the doc comment matches the behaviour.

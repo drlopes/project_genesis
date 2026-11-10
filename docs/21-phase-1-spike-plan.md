@@ -45,23 +45,29 @@ The GPU is a reasonable mid-range reference. The CPU is high-end, so every CPU-b
 also run with the **generation thread pool capped at 4 workers**, to approximate a mid-range CPU.
 A result counts only if it passes under the cap.
 
-Initial budgets, to be confirmed or revised by the spike:
+**Thread model.** Generation (field sampling and meshing) runs on worker threads, sized to
+physical cores minus two (main and render threads), so the 4-worker cap models a 6-core CPU.
+Worker work is a **throughput** target (E4). Per-frame budgets apply only to the main thread.
 
 | Budget | Target | Measured |
 |---|---|---|
-| Frame time p99 | ≤ 16.6 ms | — |
-| Chunk generation, amortised per frame (from [10](./10-lod-and-streaming.md#frame-budget-targets)) | ≤ 2 ms | — |
-| Mesh building, amortised per frame (from 10) | ≤ 2 ms | — |
-| LOD update per frame (from 10) | ≤ 1 ms | — |
+| Frame time p99 | ≤ 16.6 ms (60 fps) | — |
+| Worst frame while streaming (p99.9, scripted fly-in) | ≤ 33 ms | — |
+| Main-thread terrain work per frame: integrate finished patches (upload, spawn/despawn) + LOD update (from [10](./10-lod-and-streaming.md#frame-budget-targets)) | ≤ 2 ms | — |
+| Worker generation throughput | enough for the LOD-4 ring at rover speed, 4 workers (E4) | 774 full-detail 65×65 patches/s at 4 workers, field only ([E1](./spikes/E1-field-cost.md)) |
 | Terrain + scatter VRAM | ≤ 2 GB | — |
+| Total VRAM at 1440p | ≤ 6 GB (headroom on an 8 GB card) | — |
 | Terrain + scatter + voxel RAM per resident body | ≤ 1.5 GB | — |
+| Total process RAM | ≤ 6 GB (fits a 16 GB machine) | — |
 | Full L0–L4 sample, single thread | ≤ 4 µs | 1.18 µs ([E1](./spikes/E1-field-cost.md)) |
 | L0–L2 sample, single thread | ≤ 1 µs | 1.05 µs ([E1](./spikes/E1-field-cost.md)) |
 | Body bake (core + caches) | ≤ 2 s on worker threads | 62 ms, 1 thread, pyramid + caches ([E1](./spikes/E1-field-cost.md)) |
 | Edit → remesh visible | ≤ 50 ms | — |
-| Incremental build after a one-line change in `genesis_gen` | ≤ 15 s | — |
+| Incremental build + launch after a one-line change in `genesis_gen` | ≤ 15 s | — |
+| Incremental build + launch after a one-line change in the Bevy app crate | ≤ 20 s | — |
 
-`PROPOSED` — these targets. The user may revise them before the spike starts.
+`DECIDED` (reviewed 2026-11-10) — these are the targets. Spike evidence may revise a target; the
+revision and its reason are recorded in the experiment's results file.
 
 ---
 
