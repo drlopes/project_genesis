@@ -1,0 +1,11 @@
+{
+  "name": "genesis-doc-checks",
+  "private": true,
+  "description": "Validates TOML blocks, fences, links and GitHub anchors in docs/.",
+  "scripts": {
+    "check": "node check.js"
+  },
+  "dependencies": {
+    "smol-toml": "^1.9.1"
+  }
+}

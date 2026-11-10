@@ -116,7 +116,7 @@ T_mean(p) = T_base
 `altitude` here is metres above sea level, not radius above the reference sphere; see
 [16 — Data Contracts](./16-data-contracts.md#vertical-quantities). The field uses the **pre-L3**
 height (`h0`), so landform detail never moves a climate boundary. See
-[09 — Surface Field Stack](./09-surface-field-stack.md#l1-climate-hydrology).
+[09 — Surface Field Stack](./09-surface-field-stack.md#l1--climate--hydrology).
 
 ### Latitude
 
