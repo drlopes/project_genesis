@@ -178,8 +178,9 @@ never operate on large coordinates.
 - Surface-local coordinates are single precision and small; convert at the boundary.
 - Physics uses a local frame around the player (or around each active body).
 
-If the engine has native support for large-world coordinates, use it, but verify it at
-interplanetary ranges before relying on it.
+Bevy transforms are single precision. A camera-relative frame (the `big_space` crate or an
+equivalent of our own) is evaluated in the Phase 1 spike and verified at interplanetary ranges
+before we rely on it. See [20 — Tech Stack & Workspace](./20-tech-stack-and-workspace.md#how-bevy-is-used).
 
 ---
 

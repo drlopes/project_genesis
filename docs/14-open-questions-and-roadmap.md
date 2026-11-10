@@ -52,6 +52,8 @@ Keep it current. An out-of-date decision log is worse than none.
 | D39 | Variants compete within their family; families compete on the max of their members' suitability | [19](./19-biome-classification.md#11-variants-two-stage-families), [17](./17-biome-and-landform-format.md#variants) |
 | D40 | Adjacency is handled by ecotones at runtime and an incompatibility audit at bake | [19](./19-biome-classification.md#10-ecotones), [07](./07-biomes-and-ecology.md#soft-classification-and-blending) |
 | D41 | Biome borders use axis-value jitter, not positional domain warp; patchiness comes from a per-family mosaic prior | [19](./19-biome-classification.md#2-jitter), [09](./09-surface-field-stack.md#domain-warping) |
+| D42 | Rust + Bevy (pinned 0.20), PC only; the generator crates never depend on Bevy | [20](./20-tech-stack-and-workspace.md) |
+| D43 | Generation is bit-identical across platforms: `libm` maths, in-house hash/RNG/noise, ordered iteration, golden tests on Windows and Linux | [20](./20-tech-stack-and-workspace.md#determinism-rules), [11](./11-determinism-and-sampling.md) |
 
 ---
 
@@ -160,6 +162,8 @@ See [10](./10-lod-and-streaming.md) for the voxel strategy and
 Build in this order. Each step de-risks the next.
 
 ### Phase 0 — Foundations (before content)
+- Set up the Cargo workspace, pinned toolchain, lints, and CI
+  ([20](./20-tech-stack-and-workspace.md)).
 - Define the descriptor schema ([03](./03-planet-descriptor.md)).
 - Write the data contracts ([16](./16-data-contracts.md)) and the content format
   ([17](./17-biome-and-landform-format.md)).
@@ -172,7 +176,8 @@ Build in this order. Each step de-risks the next.
 - Implement `rocky` macro geology (plates + craters) at low resolution.
 - Solve sea level from hypsometry; render an ocean shell.
 - Run the voxel-resolution spike and record the numbers (Q2).
-- Implement the cube-sphere quadtree with 4 LODs.
+- Implement the cube-sphere quadtree with the five LOD bands
+  ([10](./10-lod-and-streaming.md#lod-levels-and-budgets)).
 - Implement collision from the same field.
 - Fly from orbit to ground on one planet.
 

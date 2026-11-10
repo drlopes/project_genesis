@@ -55,7 +55,8 @@ Rules:
 7. **Bodies with a water column implement `volumeSample`.** It returns the pelagic zone, light,
    current, turbidity, scatter density, and hazards. Bodies without a water column return `null`.
 
-`DECIDED` — the contract above. Exact language/signatures depend on the engine.
+`DECIDED` — the contract above. It is implemented as Rust traits in `genesis_gen`, with no Bevy
+dependency; see [20 — Tech Stack & Workspace](./20-tech-stack-and-workspace.md#the-boundary-rule).
 
 ---
 

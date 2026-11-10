@@ -56,6 +56,7 @@ Start with [Vision & Pillars](./00-vision.md), then [World Model](./01-world-mod
 | [17 — Biome & Landform Format](./17-biome-and-landform-format.md) | Concrete biome, suite, palette, scatter, and zone schemas | You are authoring or validating content |
 | [18 — Collision & Edits](./18-collision-and-edits.md) | Solid model, raycasts, waterline, edit records, voxel boundary | You are writing physics, interaction, or persistence code |
 | [19 — Biome Classification](./19-biome-classification.md) | The L2 algorithm: inputs, scoring, normalisation, ecotones, variants, palette selection | You are implementing or debugging biome weights |
+| [20 — Tech Stack & Workspace](./20-tech-stack-and-workspace.md) | Rust + Bevy, crate layout, determinism rules, build and upgrade policy | You are writing code or setting up the repo |
 
 ---
 
