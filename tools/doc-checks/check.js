@@ -1,4 +1,4 @@
-// Validates the Markdown docs in ../../docs:
+// Validates every Markdown file git tracks (or would track) in the repository:
 //   1. every ```toml block parses
 //   2. code fences are balanced
 //   3. every relative link points at an existing file
@@ -11,17 +11,19 @@ const fs = require('fs');
 const path = require('path');
 const { parse } = require('smol-toml');
 
-const docsDir = path.resolve(__dirname, '..', '..', 'docs');
+const { execSync } = require('child_process');
 
-// All .md files under docs/, as forward-slash paths relative to docs/.
-function walk(dir, prefix = '') {
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e =>
-    e.isDirectory()
-      ? walk(path.join(dir, e.name), `${prefix}${e.name}/`)
-      : e.name.endsWith('.md') ? [`${prefix}${e.name}`] : []
-  );
-}
-const files = walk(docsDir).sort();
+// Paths are forward-slash, relative to the repository root. Using git's view (tracked plus new,
+// minus ignored) means local-only folders such as research/library/ are never scanned.
+const docsDir = path.resolve(__dirname, '..', '..');
+const files = execSync('git ls-files --cached --others --exclude-standard -- "*.md"', {
+  cwd: docsDir,
+  encoding: 'utf8',
+})
+  .split('\n')
+  .map(f => f.trim())
+  .filter(f => f && !f.includes('node_modules/') && fs.existsSync(path.join(docsDir, f)))
+  .sort();
 const read = f => fs.readFileSync(path.join(docsDir, f), 'utf8');
 const lineOf = (text, index) => text.slice(0, index).split(/\r?\n/).length;
 
@@ -101,7 +103,7 @@ for (const file of files) {
 for (const f of failures) console.log(f);
 console.log(
   failures.length === 0
-    ? `OK: ${files.length} docs, ${tomlCount} TOML blocks, fences, links and anchors valid`
-    : `FAILED: ${failures.length} problem(s) across ${files.length} docs`
+    ? `OK: ${files.length} Markdown files, ${tomlCount} TOML blocks, fences, links and anchors valid`
+    : `FAILED: ${failures.length} problem(s) across ${files.length} Markdown files`
 );
 process.exit(failures.length ? 1 : 0);

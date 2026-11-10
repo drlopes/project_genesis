@@ -3,12 +3,18 @@
   "files.watcherExclude": {
     "**/target/**": true,
     "**/node_modules/**": true,
-    "**/.git/objects/**": true
+    "**/.git/objects/**": true,
+    "research/library/**": true,
+    "art/references/**": true
   },
+  // Local research files and art binaries are not searchable text; the cards and indexes are.
   "search.exclude": {
     "**/target": true,
     "**/node_modules": true,
-    "**/Cargo.lock": true
+    "**/Cargo.lock": true,
+    "research/library": true,
+    "art/references": true,
+    "art/concept/**/*.{png,jpg,jpeg,webp,gif,tif,tiff,exr,hdr,psd,psb,kra,xcf,clip,blend,pdf,mp4,webm}": true
   },
   "files.exclude": {
     "**/target": true,

@@ -24,3 +24,23 @@
 *.psd  binary
 *.ttf  binary
 *.otf  binary
+
+# Concept art goes through Git LFS (art/README.md). Only under art/; later lines win.
+art/**/*.png   filter=lfs diff=lfs merge=lfs -text
+art/**/*.jpg   filter=lfs diff=lfs merge=lfs -text
+art/**/*.jpeg  filter=lfs diff=lfs merge=lfs -text
+art/**/*.webp  filter=lfs diff=lfs merge=lfs -text
+art/**/*.gif   filter=lfs diff=lfs merge=lfs -text
+art/**/*.tif   filter=lfs diff=lfs merge=lfs -text
+art/**/*.tiff  filter=lfs diff=lfs merge=lfs -text
+art/**/*.exr   filter=lfs diff=lfs merge=lfs -text
+art/**/*.hdr   filter=lfs diff=lfs merge=lfs -text
+art/**/*.psd   filter=lfs diff=lfs merge=lfs -text
+art/**/*.psb   filter=lfs diff=lfs merge=lfs -text
+art/**/*.kra   filter=lfs diff=lfs merge=lfs -text
+art/**/*.xcf   filter=lfs diff=lfs merge=lfs -text
+art/**/*.clip  filter=lfs diff=lfs merge=lfs -text
+art/**/*.blend filter=lfs diff=lfs merge=lfs -text
+art/**/*.pdf   filter=lfs diff=lfs merge=lfs -text
+art/**/*.mp4   filter=lfs diff=lfs merge=lfs -text
+art/**/*.webm  filter=lfs diff=lfs merge=lfs -text

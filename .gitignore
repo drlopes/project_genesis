@@ -1,2 +1,11 @@
-node_modules/
+# Build output and dependencies
 target/
+node_modules/
+
+# Local-only research material and third-party references (copyrighted; never committed).
+# Only their READMEs/indexes are tracked. See research/README.md and art/README.md.
+research/library/*
+!research/library/README.md
+art/references/*
+!art/references/README.md
+!art/references/SOURCES.md
