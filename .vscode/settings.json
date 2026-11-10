@@ -1,0 +1,28 @@
+{
+  // Build output and dependencies: never watched, searched, or indexed.
+  "files.watcherExclude": {
+    "**/target/**": true,
+    "**/node_modules/**": true,
+    "**/.git/objects/**": true
+  },
+  "search.exclude": {
+    "**/target": true,
+    "**/node_modules": true,
+    "**/Cargo.lock": true
+  },
+  "files.exclude": {
+    "**/target": true,
+    "**/node_modules": true
+  },
+
+  // Two Cargo workspaces: production crates and throwaway spikes.
+  "rust-analyzer.linkedProjects": ["Cargo.toml", "spikes/Cargo.toml"],
+  // rust-analyzer builds into target/rust-analyzer, so its background checks never hold the
+  // build lock while you run cargo yourself. Still inside target/, so still excluded above.
+  "rust-analyzer.cargo.targetDir": true,
+  "rust-analyzer.check.command": "clippy",
+
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "[rust]": { "editor.formatOnSave": true }
+}

@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # CI builds each commit once; incremental caches would only bloat the cache.
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  rust:
+    name: Rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            spikes -> ../target
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Tests
+        run: cargo test --workspace --locked
+
+      # Cross-platform determinism (docs/20 rule 6, spike E2): both OSes must reproduce the
+      # hashes recorded on the reference Windows machine, in release and debug builds.
+      - name: E2 determinism (release)
+        working-directory: spikes
+        run: cargo run --release --locked --bin e2 -- --check field/e2-expected.txt
+
+      - name: E2 determinism (debug)
+        working-directory: spikes
+        run: cargo run --locked --bin e2 -- --check field/e2-expected.txt
+
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install doc-check dependencies
+        working-directory: tools/doc-checks
+        run: npm ci --no-fund --no-audit
+      - name: Check docs
+        run: node tools/doc-checks/check.js

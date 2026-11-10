@@ -1,0 +1,3 @@
+# Share the root target/ so spikes do not keep a second copy of every dependency.
+[build]
+target-dir = "../target"
