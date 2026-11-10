@@ -98,6 +98,8 @@ struct Run {
 struct FlyCam {
     yaw: f32,
     pitch: f32,
+    /// Frame counter for throttling window-title updates.
+    frame: u32,
 }
 
 fn main() {
@@ -165,9 +167,11 @@ fn setup(
             ..default()
         }),
         Transform::from_translation(start_pos).looking_at(Vec3::ZERO, Vec3::Y),
+        // Start looking straight down at the body (it fills ~30° of view from this distance).
         FlyCam {
             yaw: 0.0,
-            pitch: 0.0,
+            pitch: -1.55,
+            frame: 0,
         },
     ));
     commands.spawn((
@@ -246,6 +250,7 @@ fn drive_camera(
     terrain: Res<Terrain>,
     mut run: ResMut<Run>,
     mut cam: Query<(&mut Transform, &mut FlyCam)>,
+    mut window: Query<&mut Window, With<PrimaryWindow>>,
 ) {
     let Ok((mut tf, mut fly)) = cam.single_mut() else {
         return;
@@ -273,11 +278,24 @@ fn drive_camera(
         };
     if mouse.pressed(MouseButton::Right) {
         fly.yaw -= motion.delta.x * 0.003;
-        fly.pitch = (fly.pitch - motion.delta.y * 0.003).clamp(-1.5, 1.5);
+        fly.pitch = (fly.pitch - motion.delta.y * 0.003).clamp(-1.55, 1.55);
     }
-    let base = Transform::IDENTITY.looking_to(-up.any_orthonormal_vector(), up);
-    let rot = base.rotation * Quat::from_rotation_y(fly.yaw) * Quat::from_rotation_x(fly.pitch);
-    tf.rotation = rot;
+    // Orientation is yaw/pitch in the local frame: up = away from the body centre, north = world
+    // +Y projected onto the horizon (world +X near the poles). A stable north keeps the view from
+    // lurching as the camera moves; the earlier `any_orthonormal_vector` frame did not.
+    let north_ref = if up.y.abs() < 0.99 { Vec3::Y } else { Vec3::X };
+    let north = (north_ref - up * up.dot(north_ref)).normalize();
+    let base = Transform::IDENTITY.looking_to(north, up);
+    tf.rotation = base.rotation * Quat::from_rotation_y(fly.yaw) * Quat::from_rotation_x(fly.pitch);
+    fly.frame = fly.frame.wrapping_add(1);
+    if let Ok(mut win) = window.single_mut() {
+        if fly.frame % 15 == 1 {
+            win.title = format!(
+                "Genesis E3 | altitude {:.0} m | speed {:.0} m/s | RMB look · WASD move · Q/E down/up · Shift fast · F fly-in",
+                alt, speed
+            );
+        }
+    }
     let mut dir = Vec3::ZERO;
     if keys.pressed(KeyCode::KeyW) {
         dir += *tf.forward();
