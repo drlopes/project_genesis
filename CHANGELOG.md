@@ -7,6 +7,13 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 ## [Unreleased]
 
 ### Added
+- E3 spike app (`spikes/app`, Bevy 0.20.1): cube-sphere quadtree with screen-space-error selection
+  and horizon culling, patch meshing on a fixed worker pool with a re-prioritised queue, hole-free
+  display, a scripted fly-in that writes JSON summaries, per-frame CSV, peak-VRAM sampling, and a
+  `valid` flag for runs disturbed by window focus.
+- `spike_field::Body::bake_with_radius` for bodies of any radius (E2 hashes unchanged).
+- Ideas I-004 (view-dependent LOD), I-005 (compressed vertices), I-006 (per-patch overhead),
+  I-007 (Bevy `dynamic_linking` at the next upgrade).
 - Work structure: `work/` with process rules, `NOW.md` (one active goal), `BUGS.md`, and
   `IDEAS.md`; this changelog.
 - Research library and knowledge base: `research/sources/` (one card per source, committed),
@@ -32,6 +39,9 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 - Architecture docs 00–21 (vision through the Phase 1 spike plan).
 
 ### Changed
+- Windows builds link with `rust-lld` (repository `.cargo/config.toml`): ~6 s incremental builds,
+  against 6.7–14.9 s with the default linker (E9).
+- Spikes workspace dev profile matches the root: dependencies optimised, own code `opt-level = 1`.
 - Doc checks cover every Markdown file git tracks (root, `docs/`, `work/`, `research/`,
   `knowledge/`, `art/`), not only `docs/`.
 - `genesis_core` noise: one hash mix per lattice corner and a 16-entry gradient table; 8.5× faster
@@ -50,6 +60,12 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
   depth. Commits from the E1 harness onward have new hashes; docs cite both where it matters.
 
 ### Docs
+- E3 results (pending the user's visual check): 65 × 65 patches; the error metric's useful range is
+  8–16 px, not the planned 1–4; SSE 16 meets every budget, SSE 8 exceeds terrain VRAM (~2.7 GB)
+  without compressed vertices; body size does not change the picture. Four streaming rules from
+  spike bugs written into docs/10. Budget table in docs/21 filled with E3 measurements.
+- E9 results: Bevy `dynamic_linking` is unavailable on 0.20.1 (`bevy_dylib 0.20.1` unpublished);
+  static linking with `rust-lld` meets both build-time targets.
 - Phase 1 budget table reviewed and decided: per-frame budgets apply to the main thread only;
   worker generation is a throughput target; added a worst-frame bound (≤ 33 ms while streaming),
   total RAM (≤ 6 GB) and VRAM (≤ 6 GB) caps, and a build-time target for the Bevy app crate.

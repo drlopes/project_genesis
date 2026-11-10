@@ -1,0 +1,7 @@
+# Applies to the root workspace and to spikes/ (cargo merges configs from parent directories).
+
+# rust-lld ships with the Rust toolchain: faster and more consistent incremental links than the
+# default MSVC linker (E9: ~6 s vs 6.7–14.9 s for a one-line change). Windows only; other targets
+# keep their default linker. See docs/spikes/E3-lod-and-quadtree.md#e9--build-iteration.
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld.exe"

@@ -2,6 +2,9 @@
 target/
 node_modules/
 
+# Per-frame spike dumps are large and temporary; the JSON summaries next to them are kept.
+spikes/**/results/*.csv
+
 # Local-only research material and third-party references (copyrighted; never committed).
 # Only their READMEs/indexes are tracked. See research/README.md and art/README.md.
 research/library/*

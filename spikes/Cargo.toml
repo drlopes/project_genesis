@@ -2,7 +2,14 @@
 # nothing here is production code, and production crates never depend on it.
 [workspace]
 resolver = "3"
-members = ["field"]
+members = ["field", "app"]
+
+# Same dev-profile policy as the root workspace (docs/20): unoptimised Bevy is too slow to test.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
 
 [profile.release]
 debug = 1

@@ -51,20 +51,20 @@ Worker work is a **throughput** target (E4). Per-frame budgets apply only to the
 
 | Budget | Target | Measured |
 |---|---|---|
-| Frame time p99 | ≤ 16.6 ms (60 fps) | — |
-| Worst frame while streaming (p99.9, scripted fly-in) | ≤ 33 ms | — |
-| Main-thread terrain work per frame: integrate finished patches (upload, spawn/despawn) + LOD update (from [10](./10-lod-and-streaming.md#frame-budget-targets)) | ≤ 2 ms | — |
+| Frame time p99 | ≤ 16.6 ms (60 fps) | SSE 16: 3.9–4.9 ms; SSE 8: 5.2–7.0 ms ([E3](./spikes/E3-lod-and-quadtree.md)) |
+| Worst frame while streaming (p99.9, scripted fly-in) | ≤ 33 ms | SSE 16: 5.7–7.0 ms; SSE 8: 6.0–16.9 ms ([E3](./spikes/E3-lod-and-quadtree.md)) |
+| Main-thread terrain work per frame: integrate finished patches (upload, spawn/despawn) + LOD update (from [10](./10-lod-and-streaming.md#frame-budget-targets)) | ≤ 2 ms | p99 SSE 16: 0.6–0.9 ms; SSE 8: 1.6–1.9 ms ([E3](./spikes/E3-lod-and-quadtree.md)) |
 | Worker generation throughput | enough for the LOD-4 ring at rover speed, 4 workers (E4) | 774 full-detail 65×65 patches/s at 4 workers, field only ([E1](./spikes/E1-field-cost.md)) |
-| Terrain + scatter VRAM | ≤ 2 GB | — |
-| Total VRAM at 1440p | ≤ 6 GB (headroom on an 8 GB card) | — |
-| Terrain + scatter + voxel RAM per resident body | ≤ 1.5 GB | — |
-| Total process RAM | ≤ 6 GB (fits a 16 GB machine) | — |
+| Terrain + scatter VRAM | ≤ 2 GB | terrain only, peak incl. Bevy: SSE 16 1.6–2.0 GB; **SSE 8 ~2.7 GB, over** ([E3](./spikes/E3-lod-and-quadtree.md#peak-vram)) |
+| Total VRAM at 1440p | ≤ 6 GB (headroom on an 8 GB card) | peak ≤ 2.8 GB for the app in every run ([E3](./spikes/E3-lod-and-quadtree.md#peak-vram)) |
+| Terrain + scatter + voxel RAM per resident body | ≤ 1.5 GB | terrain only: ~0.43 GB for the whole process ([E3](./spikes/E3-lod-and-quadtree.md)) |
+| Total process RAM | ≤ 6 GB (fits a 16 GB machine) | ~0.43 GB, terrain-only spike ([E3](./spikes/E3-lod-and-quadtree.md)) |
 | Full L0–L4 sample, single thread | ≤ 4 µs | 1.18 µs ([E1](./spikes/E1-field-cost.md)) |
 | L0–L2 sample, single thread | ≤ 1 µs | 1.05 µs ([E1](./spikes/E1-field-cost.md)) |
 | Body bake (core + caches) | ≤ 2 s on worker threads | 62 ms, 1 thread, pyramid + caches ([E1](./spikes/E1-field-cost.md)) |
 | Edit → remesh visible | ≤ 50 ms | — |
-| Incremental build + launch after a one-line change in `genesis_gen` | ≤ 15 s | — |
-| Incremental build + launch after a one-line change in the Bevy app crate | ≤ 20 s | — |
+| Incremental build + launch after a one-line change in `genesis_gen` | ≤ 15 s | build 6.0–6.3 s with `rust-lld`, field crate as stand-in; launch not measured ([E9](./spikes/E3-lod-and-quadtree.md#e9--build-iteration)) |
+| Incremental build + launch after a one-line change in the Bevy app crate | ≤ 20 s | build 6.0–6.3 s with `rust-lld`; launch not measured ([E9](./spikes/E3-lod-and-quadtree.md#e9--build-iteration)) |
 
 `DECIDED` (reviewed 2026-11-10) — these are the targets. Spike evidence may revise a target; the
 revision and its reason are recorded in the experiment's results file.
@@ -100,7 +100,9 @@ Run in this order: E1 and E2 need no engine and gate everything else.
 |---|---|---|
 | E1 — Field cost | **done** | pass; [results](./spikes/E1-field-cost.md) |
 | E2 — Determinism | **done** | pass on Windows and Linux; [results](./spikes/E2-determinism.md) |
-| E3–E9 | not started | need the Bevy app |
+| E3 — LOD and quadtree | **measured; awaiting user visual check** | grid 65, SSE 8–16 px; [results](./spikes/E3-lod-and-quadtree.md) |
+| E9 — Build iteration | **done** | static Bevy + `rust-lld`, ~6 s; [results](./spikes/E3-lod-and-quadtree.md#e9--build-iteration) |
+| E4–E8 | not started | — |
 
 ### E1 — Field cost
 

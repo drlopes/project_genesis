@@ -1,0 +1,15 @@
+{
+  "config": { "radius_km": 24, "grid": 65, "sse_px": 16, "spacing_scale": 1, "workers": 4, "seed": 1 },
+  "duration_s": 90.0,
+  "frames": 31326,
+  "frame_ms": { "p50": 2.77, "p99": 4.85, "p999": 6.99, "max": 42.83 },
+  "terrain_main_ms": { "p50": 0.261, "p99": 0.907, "max": 1.368 },
+  "patch_build_ms": { "p50": 4.37, "p99": 5.33, "count": 5186, "discarded_stale": 0 },
+  "max_displayed_patches": 1659,
+  "max_resident_patches": 1659,
+  "max_triangles": 14449890,
+  "max_queued": 16,
+  "frames_with_missing_patches": 0,
+  "ram_mb": 425,
+  "vram": "baseline 1225 MiB, 8188 MiB / end 2847 MiB, 8188 MiB"
+}

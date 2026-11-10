@@ -119,7 +119,19 @@ impl Body {
         budget: usize,
         n: usize,
     ) -> Body {
-        let radius = 24_000.0;
+        Self::bake_with_radius(seed, 24_000.0, palette, suites, k, budget, n)
+    }
+
+    /// As [`Body::bake`], with an explicit body radius in metres (E3 runs 8 / 24 / 40 km).
+    pub fn bake_with_radius(
+        seed: Seed,
+        radius: f64,
+        palette: usize,
+        suites: usize,
+        k: u32,
+        budget: usize,
+        n: usize,
+    ) -> Body {
         let geology = seed.derive("geology");
         let pyramid = Grid::build(n, |d| {
             let p = [d[0] * radius, d[1] * radius, d[2] * radius];

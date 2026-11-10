@@ -115,14 +115,25 @@ tree.
 
 ### LOD selection
 
-Choose patch LOD from:
+A patch splits when **one sample spacing projects to more than *SSE* pixels**:
 
-- distance from camera to patch centre,
-- the patch's screen-space error (projected size of one sample),
-- a per-body tuning constant (planet radius vs view distance),
-- a "must be at least LOD N" flag near the player.
+```text
+error_px = spacing(level) / distance · viewport_height_px / (2 · tan(fov / 2))
+split if error_px > SSE            (and level < max level)
+stay split while error_px > SSE / 2   (hysteresis)
+```
 
-Prefer hysteresis so patches do not flip LOD every frame at a boundary.
+- `distance` is measured to the patch centre **on the terrain**, minus a bound of
+  `0.75 · edge + min(0.5 · edge, total relief)`. A fixed relief margin makes everything near the
+  camera look adjacent and subdivides the whole neighbourhood (E3).
+- Patches entirely below the horizon of the body's lowest-terrain sphere are not selected.
+- A "must be at least LOD N" flag near the player still applies for collision (E6).
+
+`DECIDED` (from [E3](./spikes/E3-lod-and-quadtree.md)) — the metric above, with a **65 × 65** patch
+grid. The useful SSE range is **8–16 px**: at 2 px the near-ground cut is ~5 000 patches and ~45 M
+triangles, and each doubling of SSE cuts both by ~2.5×. SSE 16 meets every Phase 1 budget with the
+current vertex format; SSE 8 needs a compressed vertex format (I-005) to fit the terrain VRAM
+budget. The default between them is set by the E3 visual check.
 
 ### Seams
 
@@ -135,7 +146,9 @@ Adjacent patches at different LODs will crack. Options, pick one:
 - **Morphing** — vertex positions are blended toward the coarser LOD near boundaries. Best
   visual result, more shader work.
 
-`PROPOSED` — start with skirts; upgrade to morphing if the seams are visible during flight.
+`PROPOSED` — start with skirts; upgrade to morphing if the seams are visible during flight. E3
+used skirts (depth: four sample spacings) with no hole frames at SSE 16; the visual verdict on
+cracks and popping is the E3 user check.
 
 ---
 
@@ -254,9 +267,23 @@ ordering, promotion, and persistence rules are in
 
 - Generate chunks on worker threads. Size the generation pool to **physical cores**: in
   [E1](./spikes/E1-field-cost.md), 16 SMT threads were slower than 8 on an 8-core CPU.
-- Budget generation time per frame (e.g. a few milliseconds) across a queue.
-- Prioritise by: distance, screen coverage, player trajectory, collision needs.
+- Prioritise by: distance, screen coverage, player trajectory, collision needs. Re-prioritise the
+  queue every frame; the camera moves faster than the queue drains.
 - Use a lower-LOD placeholder until a chunk is ready, so there is never a hole.
+
+Rules learned the hard way in [E3](./spikes/E3-lod-and-quadtree.md#spike-bugs-found-on-the-way):
+
+- **Track in-flight work.** A patch that is being built, or is built and waiting to be integrated,
+  must never be queued again. Without this, the backlog rebuilt the same patches until it held
+  13 GB.
+- **Discard stale results on receipt.** If the camera no longer wants a finished patch, drop it
+  instead of integrating it and despawning it a frame later.
+- **Display without holes or overlaps:** a wanted patch that is not ready is covered by its nearest
+  ready ancestor; when zooming out, by its ready descendants; never both. Implement with tree walks
+  and hash lookups (O(patches × depth)); scanning all resident patches is O(n²) and cost 15–60 ms
+  per frame at a few thousand patches.
+- **The first ceiling is the main thread's integration rate**, not worker throughput: every patch
+  carries a fixed main-thread cost. Fewer, larger patches beat many small ones (see I-006).
 
 ### Caching and eviction
 

@@ -167,8 +167,12 @@ made in the Phase 1 spike, and either must accept our field as the terrain colli
 - **`Cargo.lock` is committed.** The game is an application; builds must be reproducible.
 - **Dev profile:** optimise dependencies (`opt-level = 3` for `[profile.dev.package."*"]`) and
   lightly optimise our own code (`opt-level = 1`). Unoptimised Bevy is too slow to test with.
-- **Dev iteration:** Bevy's `dynamic_linking` feature in dev builds only, and a fast linker.
-  Measure link times in the spike before committing to a specific setup.
+- **Dev iteration:** static Bevy linked with **`rust-lld`** on Windows, set by name in the
+  repository's `.cargo/config.toml` (it ships with the toolchain; nothing to install). Measured in
+  [E9](./spikes/E3-lod-and-quadtree.md#e9--build-iteration): a one-line change rebuilds in
+  ~6 s in either the app or the generation crate, against 6.7–14.9 s with the default MSVC linker.
+  Bevy's `dynamic_linking` is unavailable on 0.20.1 (`bevy_dylib 0.20.1` is not published);
+  revisit at the next upgrade (I-007). Changing the linker forces one full rebuild (~6 min).
 - **Release profile:** full optimisation, LTO evaluated in the spike.
 - **Formatting and lints:** `rustfmt` and `clippy` are mandatory and run in CI. Warnings are
   errors in CI.

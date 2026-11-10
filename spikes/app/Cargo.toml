@@ -1,0 +1,11 @@
+[package]
+name = "spike_app"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "E3–E7: Bevy app streaming cube-sphere patches from the spike field."
+
+[dependencies]
+spike_field = { path = "../field" }
+genesis_core = { path = "../../crates/genesis_core" }
+bevy = "0.20"
