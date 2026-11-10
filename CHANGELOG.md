@@ -49,6 +49,10 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 - Architecture docs 00–21 (vision through the Phase 1 spike plan).
 
 ### Changed
+- I-005: compact patch vertex format, 32 bytes per vertex instead of 80 (16-bit positions in a
+  per-patch box used as the entity transform, octahedral normals, gamma-2 RGBA8 colours, u16
+  indices). Terrain mesh data at SSE 16: 331 MB, from 783 MB; peak VRAM above baseline 1.34–1.39 GB,
+  from 2.44 GB, within the 2 GB terrain budget. The harness now reports resident terrain mesh bytes.
 - Windows builds link with `rust-lld` (repository `.cargo/config.toml`): ~6 s incremental builds,
   against 6.7–14.9 s with the default linker (E9).
 - Spikes workspace dev profile matches the root: dependencies optimised, own code `opt-level = 1`.
