@@ -12,6 +12,9 @@ pub struct Frame {
     pub triangles: u64,
     pub queued: u32,
     pub in_flight: u32,
+    /// Resident terrain vertex + index data (MB), and the same patches in E3's float format.
+    pub mesh_mb: u32,
+    pub float_format_mb: u32,
     pub missing: u32,
     pub altitude: f32,
     /// Window unfocused or minimised: the OS may throttle frames, so the run is not valid.
@@ -85,7 +88,8 @@ impl Recorder {
              \"terrain_main_ms\": {{ \"p50\": {:.3}, \"p99\": {:.3}, \"max\": {:.3} }},\n  \
              \"patch_build_ms\": {{ \"p50\": {:.2}, \"p99\": {:.2}, \"count\": {}, \"discarded_stale\": {} }},\n  \
              \"max_displayed_patches\": {},\n  \"max_resident_patches\": {},\n  \"max_triangles\": {},\n  \
-             \"max_queued\": {},\n  \"frames_with_missing_patches\": {},\n  \
+             \"max_queued\": {},\n  \"max_terrain_mesh_mb\": {},\n  \
+             \"max_terrain_mesh_mb_float_format\": {},\n  \"frames_with_missing_patches\": {},\n  \
              \"disturbed_frames\": {},\n  \"valid\": {},\n  \
              \"ram_mb\": {},\n  \"vram\": \"{vram}\"\n}}\n",
             steady.len(),
@@ -104,6 +108,8 @@ impl Recorder {
             max_of(|f| f.resident as u64),
             max_of(|f| f.triangles),
             max_of(|f| f.queued as u64),
+            max_of(|f| f.mesh_mb as u64),
+            max_of(|f| f.float_format_mb as u64),
             missing_frames,
             disturbed_frames,
             disturbed_frames == 0,

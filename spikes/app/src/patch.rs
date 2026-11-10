@@ -5,6 +5,18 @@
 //! The vertex shader blends between them by screen-space error, so a patch is geometrically
 //! identical to its parent when it appears and turns into itself gradually (E3: instant LOD
 //! switches popped at every threshold).
+//!
+//! Vertex format (I-005), 32 bytes per vertex instead of 80:
+//!
+//! | Data | Format | Bytes |
+//! |---|---|---|
+//! | own position, parent position | 2 × Unorm16x4, fractions of the patch's box | 16 |
+//! | own + parent normal | Snorm16x4, two octahedral encodings | 8 |
+//! | own colour, parent colour | 2 × Unorm8x4, gamma 2 (sqrt) so dark tones do not band | 8 |
+//!
+//! The box (over both shapes, skirts included) becomes the entity transform: translation = box
+//! minimum, scale = box size. The quantisation step is ~1/65535 of the box, about 1/1000 of a
+//! sample spacing at every level, because the box scales with the patch.
 
 use crate::quadtree::{Lod, NodeId};
 use spike_field::cube::dir_of;
@@ -12,17 +24,42 @@ use spike_field::{Body, Depth, Sample};
 
 pub struct PatchMesh {
     pub id: NodeId,
-    pub centre: [f64; 3],
-    pub positions: Vec<[f32; 3]>,
-    pub normals: Vec<[f32; 3]>,
-    pub colors: Vec<[f32; 4]>,
-    /// Parent-level position minus this level's position (local, metres).
-    pub morph_offsets: Vec<[f32; 3]>,
-    pub morph_normals: Vec<[f32; 3]>,
-    pub morph_colors: Vec<[f32; 4]>,
-    pub indices: Vec<u32>,
+    /// World position of the box's minimum corner (the entity translation).
+    pub origin: [f64; 3],
+    /// Box size per axis in metres (the entity scale).
+    pub extent: [f32; 3],
+    pub positions: Vec<[u16; 4]>,
+    pub morph_positions: Vec<[u16; 4]>,
+    /// xy: own normal, zw: parent normal (octahedral).
+    pub normals: Vec<[i16; 4]>,
+    pub colors: Vec<[u8; 4]>,
+    pub morph_colors: Vec<[u8; 4]>,
+    pub indices: Vec<u16>,
     pub triangles: usize,
     pub build_ms: f32,
+}
+
+/// Bytes per vertex of the encoded format and of the E3 float format, for the metrics.
+pub const VERTEX_BYTES: usize = 32;
+pub const FLOAT_VERTEX_BYTES: usize = 80;
+
+impl PatchMesh {
+    /// GPU bytes of this patch's vertex and index data.
+    pub fn bytes(&self) -> usize {
+        self.positions.len() * VERTEX_BYTES + self.indices.len() * 2
+    }
+
+    /// What the same patch took in E3's float format (f32 attributes, u32 indices).
+    pub fn float_format_bytes(&self) -> usize {
+        self.positions.len() * FLOAT_VERTEX_BYTES + self.indices.len() * 4
+    }
+
+    /// World position of an encoded position, decoded as the GPU does (f32 box).
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub fn world(&self, q: [u16; 4]) -> [f64; 3] {
+        let o = self.origin.map(|v| v as f32 as f64);
+        [0, 1, 2].map(|k| o[k] + q[k] as f64 / 65535.0 * self.extent[k] as f64)
+    }
 }
 
 /// Samples on a square grid of face-space points `u0 + (i + start) · du`, with world positions,
@@ -223,19 +260,84 @@ pub fn build(body: &Body, lod: &Lod, id: NodeId) -> PatchMesh {
 
     fix_winding(&positions, centre, &mut indices);
     let triangles = indices.len() / 3;
+
+    // Encode. The box covers both shapes, so any morph state stays inside it (and inside the
+    // culling bounds, which are the unit box in local space).
+    let both = |k: usize| {
+        positions
+            .iter()
+            .zip(&morph_offsets)
+            .flat_map(move |(p, o)| [p[k] as f64, p[k] as f64 + o[k] as f64])
+    };
+    let lo = [0, 1, 2].map(|k| both(k).fold(f64::MAX, f64::min));
+    let hi = [0, 1, 2].map(|k| both(k).fold(f64::MIN, f64::max));
+    let extent = [0, 1, 2].map(|k| ((hi[k] - lo[k]) as f32).max(1e-3));
+    let quant = |v: [f64; 3]| {
+        let q = |k: usize| {
+            ((v[k] - lo[k]) / extent[k] as f64 * 65535.0)
+                .round()
+                .clamp(0.0, 65535.0) as u16
+        };
+        [q(0), q(1), q(2), 65535]
+    };
+    let f64x3 = |p: [f32; 3]| p.map(|v| v as f64);
+    let encoded_positions = positions.iter().map(|p| quant(f64x3(*p))).collect();
+    let encoded_morph = positions
+        .iter()
+        .zip(&morph_offsets)
+        .map(|(p, o)| quant(add(f64x3(*p), f64x3(*o))))
+        .collect();
+    let encoded_normals = normals
+        .iter()
+        .zip(&morph_normals)
+        .map(|(a, b)| {
+            let (ea, eb) = (oct_encode(f64x3(*a)), oct_encode(f64x3(*b)));
+            [ea[0], ea[1], eb[0], eb[1]]
+        })
+        .collect();
+    assert!(positions.len() <= 65_536, "patch too large for u16 indices");
     PatchMesh {
         id,
-        centre,
-        positions,
-        normals,
-        colors,
-        morph_offsets,
-        morph_normals,
-        morph_colors,
-        indices,
+        origin: add(centre, lo),
+        extent,
+        positions: encoded_positions,
+        morph_positions: encoded_morph,
+        normals: encoded_normals,
+        colors: colors.iter().map(|c| color_encode(*c)).collect(),
+        morph_colors: morph_colors.iter().map(|c| color_encode(*c)).collect(),
+        indices: indices.iter().map(|&i| i as u16).collect(),
         triangles,
         build_ms: t.elapsed().as_secs_f32() * 1000.0,
     }
+}
+
+/// Octahedral encoding of a unit vector into two snorm16 values.
+fn oct_encode(n: [f64; 3]) -> [i16; 2] {
+    let l1 = n[0].abs() + n[1].abs() + n[2].abs();
+    let (mut x, mut y) = (n[0] / l1, n[1] / l1);
+    if n[2] < 0.0 {
+        let sx = if x >= 0.0 { 1.0 } else { -1.0 };
+        let sy = if y >= 0.0 { 1.0 } else { -1.0 };
+        (x, y) = ((1.0 - y.abs()) * sx, (1.0 - x.abs()) * sy);
+    }
+    [x, y].map(|v| (v.clamp(-1.0, 1.0) * 32767.0).round() as i16)
+}
+
+/// The decoder used by `terrain.wesl`, mirrored for tests.
+#[cfg(test)]
+fn oct_decode(e: [i16; 2]) -> [f64; 3] {
+    let (x, y) = (e[0] as f64 / 32767.0, e[1] as f64 / 32767.0);
+    let mut n = [x, y, 1.0 - x.abs() - y.abs()];
+    let t = (-n[2]).max(0.0);
+    n[0] += if n[0] >= 0.0 { -t } else { t };
+    n[1] += if n[1] >= 0.0 { -t } else { t };
+    normalize(n)
+}
+
+/// Linear colour to RGBA8 with gamma 2 (the shader squares it back).
+fn color_encode(c: [f32; 4]) -> [u8; 4] {
+    let g = |v: f32| (v.clamp(0.0, 1.0).sqrt() * 255.0).round() as u8;
+    [g(c[0]), g(c[1]), g(c[2]), 255]
 }
 
 /// The parent mesh's position, normal, and colour at this patch's vertex `(i, j)`, following the
@@ -353,33 +455,76 @@ mod tests {
                 (child_id.x % 2) as usize * half,
                 (child_id.y % 2) as usize * half,
             );
+            // Both sides are quantised in their own boxes, and the box origins are f32 on the
+            // GPU: allow one quantisation step of each box plus f32 rounding at this radius.
+            let step = |m: &PatchMesh| {
+                let e = m.extent.map(|v| v as f64 / 65535.0);
+                dot(e, e).sqrt()
+            };
+            let tolerance = step(&child) + step(&parent) + 0.01;
             for j in (0..=n).step_by(2) {
                 for i in (0..=n).step_by(2) {
                     let ci = j * (n + 1) + i;
                     let pi = (oy + j / 2) * (n + 1) + ox + i / 2;
-                    let cw = [
-                        child.positions[ci][0] as f64
-                            + child.morph_offsets[ci][0] as f64
-                            + child.centre[0],
-                        child.positions[ci][1] as f64
-                            + child.morph_offsets[ci][1] as f64
-                            + child.centre[1],
-                        child.positions[ci][2] as f64
-                            + child.morph_offsets[ci][2] as f64
-                            + child.centre[2],
-                    ];
-                    let pw = [
-                        parent.positions[pi][0] as f64 + parent.centre[0],
-                        parent.positions[pi][1] as f64 + parent.centre[1],
-                        parent.positions[pi][2] as f64 + parent.centre[2],
-                    ];
+                    let cw = child.world(child.morph_positions[ci]);
+                    let pw = parent.world(parent.positions[pi]);
                     let err = dot(sub(cw, pw), sub(cw, pw)).sqrt();
                     assert!(
-                        err < 0.02,
-                        "child {child_id:?} vertex ({i},{j}) off by {err} m"
+                        err < tolerance,
+                        "child {child_id:?} vertex ({i},{j}) off by {err} m (tolerance {tolerance} m)"
                     );
                 }
             }
         }
+    }
+
+    /// 16-bit positions are fine-grained enough at every level, coarse ones included: the step is
+    /// a fixed small fraction of the sample spacing because the box scales with the patch.
+    #[test]
+    fn position_step_is_far_below_sample_spacing_at_every_level() {
+        let body = Body::bake_with_radius(Seed(3), 24_000.0, 8, 2, 4, 4, 64);
+        let lod = Lod::new(24_000.0, 65, 16.0, 1.0);
+        for level in [0, 1, 4, 8, lod.max_level] {
+            let m = build(
+                &body,
+                &lod,
+                NodeId {
+                    face: 2,
+                    level,
+                    x: 0,
+                    y: 0,
+                },
+            );
+            let step = m.extent.iter().copied().fold(0.0f32, f32::max) as f64 / 65535.0;
+            let ratio = step / lod.spacing(level);
+            println!(
+                "level {level:>2}: step {step:.5} m, spacing {:.3} m, ratio {ratio:.5}",
+                lod.spacing(level)
+            );
+            assert!(
+                ratio < 0.01,
+                "level {level}: step is {ratio} of a sample spacing"
+            );
+        }
+    }
+
+    #[test]
+    fn octahedral_normals_round_trip_within_a_hundredth_of_a_degree() {
+        let mut worst = 0.0f64;
+        for i in 0..2_000 {
+            // Points spread over the sphere (golden-angle spiral), plus the axes.
+            let z = 1.0 - 2.0 * (i as f64 + 0.5) / 2_000.0;
+            let a = i as f64 * 2.399_963;
+            let r = (1.0 - z * z).sqrt();
+            for n in [
+                [r * a.cos(), r * a.sin(), z],
+                [0.0, 0.0, -1.0],
+                [1.0, 0.0, 0.0],
+            ] {
+                let d = oct_decode(oct_encode(n));
+                worst = worst.max(dot(n, d).clamp(-1.0, 1.0).acos().to_degrees());
+            }
+        }
+        assert!(worst < 0.01, "worst normal error {worst}°");
     }
 }

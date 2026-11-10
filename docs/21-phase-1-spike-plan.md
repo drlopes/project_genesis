@@ -55,7 +55,7 @@ Worker work is a **throughput** target (E4). Per-frame budgets apply only to the
 | Worst frame while streaming (p99.9, scripted fly-in) | ≤ 33 ms | SSE 16: 5.7–7.0 ms; SSE 8: 6.0–16.9 ms ([E3](./spikes/E3-lod-and-quadtree.md)) |
 | Main-thread terrain work per frame: integrate finished patches (upload, spawn/despawn) + LOD update (from [10](./10-lod-and-streaming.md#frame-budget-targets)) | ≤ 2 ms | p99 SSE 16: 0.6–0.9 ms; SSE 8: 1.6–1.9 ms ([E3](./spikes/E3-lod-and-quadtree.md)) |
 | Worker generation throughput | enough for the LOD-4 ring at rover speed, 4 workers (E4) | 774 full-detail 65×65 patches/s at 4 workers, field only ([E1](./spikes/E1-field-cost.md)) |
-| Terrain + scatter VRAM | ≤ 2 GB | terrain only, peak incl. Bevy, SSE 16: 1.6–2.0 GB without morphing; **~2.4 GB with geomorphing, over** until I-005 ([E3](./spikes/E3-lod-and-quadtree.md#measurements-with-morphing)) |
+| Terrain + scatter VRAM | ≤ 2 GB | terrain only, SSE 16 with geomorphing and the compact vertex format (I-005): mesh data 331 MB; peak VRAM above baseline incl. Bevy 1.34–1.39 GB ([E3](./spikes/E3-lod-and-quadtree.md#follow-up-compressed-vertex-format-i-005)) |
 | Total VRAM at 1440p | ≤ 6 GB (headroom on an 8 GB card) | peak ≤ 2.8 GB for the app in every run ([E3](./spikes/E3-lod-and-quadtree.md#peak-vram)) |
 | Terrain + scatter + voxel RAM per resident body | ≤ 1.5 GB | terrain only: ~0.43 GB for the whole process ([E3](./spikes/E3-lod-and-quadtree.md)) |
 | Total process RAM | ≤ 6 GB (fits a 16 GB machine) | ~0.43 GB, terrain-only spike ([E3](./spikes/E3-lod-and-quadtree.md)) |

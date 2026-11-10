@@ -9,25 +9,27 @@ Rules: [work/README.md](README.md). One active goal; everything else is captured
 parent's state (80 bytes). Make it compact, and re-measure, before E4 measures streaming on top of
 it. Context: [I-005](IDEAS.md#closed), [docs/10 Seams](../docs/10-lod-and-streaming.md#seams).
 
-- [ ] Choose the layout: positions as 16-bit offsets in the patch's local box (own + morph target),
-      octahedral 16-bit normals, RGBA8 colours; check whether coarse levels need 32-bit positions
-      (quantisation step vs sample spacing per level)
-- [ ] Encode in `patch.rs`, decode in `terrain.wesl`; keep the culling box over both shapes
-- [ ] Keep the morph contract within quantisation: extend `fully_morphed_child_matches_parent` to
-      the encoded data, with a tolerance derived from the quantisation step
-- [ ] Re-measure grid 65, SSE 16 (two runs): peak VRAM ≤ 2 GB target, frame and main-thread budgets
-      unchanged; screenshots (`--shots`) to check for visible quantisation
+- [x] Choose the layout: 2 × Unorm16x4 positions (box = entity transform), Snorm16x4 octahedral
+      normals, 2 × Unorm8x4 gamma-2 colours, u16 indices: 32 bytes/vertex. 16-bit is enough at
+      every level (step ≈ 0.0009 of the sample spacing; test)
+- [x] Encode in `patch.rs`, decode in `terrain.wesl`; culling box = unit box over both shapes
+- [x] Morph contract test on the encoded data; octahedral round-trip test (< 0.01°)
+- [x] Re-measured grid 65, SSE 16 (two valid runs): terrain mesh 331 MB (783 MB in float format),
+      peak VRAM above baseline 1.34–1.39 GB (was 2.44); frame and main-thread budgets unchanged;
+      screenshots show no artefacts. Harness reports resident terrain mesh bytes.
 - [ ] **User:** quick visual check for artefacts (stair-stepping, shading bands)
-- [ ] Write back: docs/10 (vertex format), E3 results or a short I-005 note, docs/21 budget row
+- [x] Write back: docs/10 (vertex format), E3 results (I-005 follow-up), docs/21 budget row
 
 ## Where we stopped
 
-E3 closed (grid 65, SSE 16, skirts + time-based geomorphing; user accepted). I-005 not started;
-first step is the layout choice and the per-level precision check.
+I-005 implemented, measured, and written up; only the user's visual check remains, then close the
+goal and start E4.
 
 ## Waiting on the user
 
-_Nothing._
+1. **I-005 visual check.** From `spikes/`: `cargo run --release -p spike_app -- --sse 16`. Fly
+   low and look for stair-stepping on slopes, shading bands, or new cracks between patches
+   (G = grey geometry makes shading easiest to judge).
 
 ## Up next
 

@@ -260,6 +260,40 @@ The morph attributes double the vertex size (80 bytes instead of 40), so **SSE 1
 2 GB terrain VRAM budget too (~2.4 GB)**: if morphing stays, the compressed vertex format (I-005)
 is needed at either threshold. SSE 8 also exceeds the 2 ms main-thread budget at p99.
 
+### Re-check
+
 **Re-check result (2026-11-10): accepted at SSE 16, "no more popping".** The same check found a
 free-flight camera bug present since the first version (flips over the poles, crawling below the
 reference sphere) and a morph-culling bug, both fixed (B-003).
+
+## Follow-up: compressed vertex format (I-005)
+
+Geomorphing doubled the vertex size and put SSE 16 over the terrain VRAM budget, so I-005 was
+done straight after E3, before E4 measures streaming on top of it. Format and rationale:
+[docs/10](../10-lod-and-streaming.md#patch-vertex-format).
+
+Precision (`position_step_is_far_below_sample_spacing_at_every_level`, 24 km body, grid 65):
+
+| Level | Quantisation step | Sample spacing | Ratio |
+|---|---|---|---|
+| 0 | 0.53 m | 589 m | 0.00090 |
+| 1 | 0.27 m | 295 m | 0.00090 |
+| 4 | 3.2 cm | 36.8 m | 0.00088 |
+| 8 | 2.0 mm | 2.30 m | 0.00086 |
+| 11 | 0.26 mm | 0.288 m | 0.00089 |
+
+The morph contract test now runs on the encoded data (tolerance: one quantisation step of each box
+plus f32 rounding), and a test checks octahedral normals round-trip within 0.01°.
+
+New harness metric: **resident terrain mesh bytes** (vertex + index data actually held), and the
+same patches in the float format. The whole-GPU "peak above baseline" includes Bevy's own
+allocations and is not a terrain-only figure.
+
+| Run (grid 65, SSE 16, morph 0.5 s) | Valid | Frame p50 / p99 / p99.9 | Main p99 | Terrain mesh | Same in float format | Peak VRAM above baseline |
+|---|---|---|---|---|---|---|
+| rep 1 (with screenshots) | yes | 2.6 / 4.7 / 15.8 ms | 1.06 ms | 331 MB | 783 MB | 1 385 MiB |
+| rep 2 | yes | 2.7 / 4.4 / 4.9 ms | 1.05 ms | 331 MB | 783 MB | 1 338 MiB |
+
+Peak VRAM fell by ~1.05 GB, about twice the mesh saving (~450 MB): Bevy's mesh buffer allocation
+evidently scales with mesh size beyond the raw bytes. Rep 1's p99.9 comes from the screenshot
+captures. Screenshots show no visible stair-stepping or colour banding; the user check is pending.

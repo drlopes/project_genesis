@@ -5,15 +5,25 @@ import bevy_pbr::render::mesh_functions::{get_world_from_local, mesh_position_lo
 // x: morph factor (0 = own, 1 = parent), y: quadtree level, z: view mode
 @group(constants::MATERIAL_BIND_GROUP) @binding(1) var<uniform> params: vec4<f32>;
 
+// Compact format (I-005): positions are unorm16 fractions of the patch box, which the mesh
+// transform maps to the world; normals are two octahedral snorm16 pairs; colours are RGBA8 with
+// gamma 2.
 struct Vertex {
     @builtin(instance_index) instance_index: u32,
-    @location(0) position: vec3<f32>,
-    @location(1) normal: vec3<f32>,
-    @location(2) color: vec4<f32>,
-    @location(3) morph_offset: vec3<f32>,
-    @location(4) morph_normal: vec3<f32>,
-    @location(5) morph_color: vec4<f32>,
+    @location(0) position: vec4<f32>,
+    @location(1) morph_position: vec4<f32>,
+    @location(2) normals: vec4<f32>,
+    @location(3) color: vec4<f32>,
+    @location(4) morph_color: vec4<f32>,
 };
+
+fn oct_decode(e: vec2<f32>) -> vec3<f32> {
+    var n = vec3<f32>(e.x, e.y, 1.0 - abs(e.x) - abs(e.y));
+    let t = max(-n.z, 0.0);
+    n.x += select(t, -t, n.x >= 0.0);
+    n.y += select(t, -t, n.y >= 0.0);
+    return normalize(n);
+}
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
@@ -24,15 +34,17 @@ struct VertexOutput {
 @vertex
 fn vertex(v: Vertex) -> VertexOutput {
     let f = params.x;
-    let local = v.position + v.morph_offset * f;
+    let local = mix(v.position.xyz, v.morph_position.xyz, f);
     var out: VertexOutput;
     out.clip_position = mesh_position_local_to_clip(
         get_world_from_local(v.instance_index),
         vec4<f32>(local, 1.0),
     );
-    // Patches are only translated, so local normals are world normals.
-    out.normal = mix(v.normal, v.morph_normal, f);
-    out.color = mix(v.color, v.morph_color, f);
+    // Normals are encoded in world space (the transform's scale is the box, not geometry), so
+    // they bypass the model matrix.
+    out.normal = mix(oct_decode(v.normals.xy), oct_decode(v.normals.zw), f);
+    let c = mix(v.color.rgb * v.color.rgb, v.morph_color.rgb * v.morph_color.rgb, f);
+    out.color = vec4<f32>(c, 1.0);
     return out;
 }
 

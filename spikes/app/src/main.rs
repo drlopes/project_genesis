@@ -15,13 +15,13 @@ mod quadtree;
 mod workers;
 
 use material::{
-    ATTRIBUTE_MORPH_COLOR, ATTRIBUTE_MORPH_NORMAL, ATTRIBUTE_MORPH_OFFSET, TerrainMaterial,
-    TerrainMaterialPlugin,
+    ATTRIBUTE_QCOLOR, ATTRIBUTE_QMORPH_COLOR, ATTRIBUTE_QMORPH_POSITION, ATTRIBUTE_QNORMALS,
+    ATTRIBUTE_QPOSITION, TerrainMaterial, TerrainMaterialPlugin,
 };
 
 use bevy::asset::RenderAssetUsages;
 use bevy::input::mouse::AccumulatedMouseMotion;
-use bevy::mesh::{Indices, PrimitiveTopology};
+use bevy::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
 use bevy::prelude::*;
 use bevy::window::{PresentMode, PrimaryWindow, WindowResolution};
 use genesis_core::Seed;
@@ -104,6 +104,9 @@ impl Config {
 struct Resident {
     entity: Entity,
     triangles: usize,
+    /// GPU bytes of vertex + index data, and what E3's float format would have taken.
+    bytes: usize,
+    float_bytes: usize,
     /// 0 = own shape, 1 = parent's shape.
     morph: f32,
     /// Morph step of the material currently assigned.
@@ -119,6 +122,9 @@ struct Terrain {
     materials: HashMap<(u8, u8), Handle<TerrainMaterial>>,
     split: HashSet<NodeId>,
     resident: HashMap<NodeId, Resident>,
+    /// Sum over resident patches (the terrain's own mesh memory, unlike whole-GPU VRAM).
+    mesh_bytes: usize,
+    float_format_bytes: usize,
     px_per_radian: f64,
     morph_s: f32,
     morph_on: bool,
@@ -274,6 +280,8 @@ fn setup(mut commands: Commands, config: Res<Config>) {
         materials: HashMap::new(),
         split: HashSet::new(),
         resident: HashMap::new(),
+        mesh_bytes: 0,
+        float_format_bytes: 0,
         px_per_radian: 1440.0 / (2.0 * 30f64.to_radians().tan()),
         morph_s: config.morph_s as f32,
         morph_on: config.morph_s > 0.0,
@@ -510,26 +518,40 @@ fn stream_terrain(
             run.recorder.patches_discarded += 1;
             continue;
         }
-        // Culling box over both shapes: a morphing vertex can lie outside its own-shape bounds,
-        // and Bevy's automatic box (own positions only) would cull a visible patch.
-        let aabb = bevy::camera::primitives::Aabb::enclosing(
-            p.positions.iter().zip(&p.morph_offsets).flat_map(|(a, o)| {
-                let a = Vec3::from_array(*a);
-                [a, a + Vec3::from_array(*o)]
-            }),
-        )
-        .expect("patch has vertices");
+        // Positions are fractions of the patch box over both morph shapes, so the culling box is
+        // the unit box in local space (Bevy cannot compute it: there is no float POSITION).
+        let aabb = bevy::camera::primitives::Aabb::from_min_max(Vec3::ZERO, Vec3::ONE);
+        let (bytes, float_bytes) = (p.bytes(), p.float_format_bytes());
+        terrain.mesh_bytes += bytes;
+        terrain.float_format_bytes += float_bytes;
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::RENDER_WORLD,
         );
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, p.positions);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, p.normals);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, p.colors);
-        mesh.insert_attribute(ATTRIBUTE_MORPH_OFFSET, p.morph_offsets);
-        mesh.insert_attribute(ATTRIBUTE_MORPH_NORMAL, p.morph_normals);
-        mesh.insert_attribute(ATTRIBUTE_MORPH_COLOR, p.morph_colors);
-        mesh.insert_indices(Indices::U32(p.indices));
+        mesh.insert_attribute(
+            ATTRIBUTE_QPOSITION,
+            VertexAttributeValues::Unorm16x4(p.positions),
+        );
+        mesh.insert_attribute(
+            ATTRIBUTE_QMORPH_POSITION,
+            VertexAttributeValues::Unorm16x4(p.morph_positions),
+        );
+        mesh.insert_attribute(
+            ATTRIBUTE_QNORMALS,
+            VertexAttributeValues::Snorm16x4(p.normals),
+        );
+        mesh.insert_attribute(ATTRIBUTE_QCOLOR, VertexAttributeValues::Unorm8x4(p.colors));
+        mesh.insert_attribute(
+            ATTRIBUTE_QMORPH_COLOR,
+            VertexAttributeValues::Unorm8x4(p.morph_colors),
+        );
+        mesh.insert_indices(Indices::U16(p.indices));
+        let transform = Transform::from_translation(Vec3::new(
+            p.origin[0] as f32,
+            p.origin[1] as f32,
+            p.origin[2] as f32,
+        ))
+        .with_scale(Vec3::from_array(p.extent));
         let material = material_for(
             &mut terrain.materials,
             &mut assets,
@@ -542,19 +564,23 @@ fn stream_terrain(
                 Mesh3d(meshes.add(mesh)),
                 MeshMaterial3d(material),
                 aabb,
-                Transform::from_xyz(p.centre[0] as f32, p.centre[1] as f32, p.centre[2] as f32),
+                transform,
                 Visibility::Hidden,
             ))
             .id();
         let resident = Resident {
             entity,
             triangles: p.triangles,
+            bytes,
+            float_bytes,
             morph: 0.0,
             step: 0,
             shown: false,
         };
         fresh.insert(p.id);
         if let Some(old) = terrain.resident.insert(p.id, resident) {
+            terrain.mesh_bytes -= old.bytes;
+            terrain.float_format_bytes -= old.float_bytes;
             commands.entity(old.entity).despawn();
         }
     }
@@ -730,6 +756,8 @@ fn stream_terrain(
     }
     for id in drop {
         if let Some(r) = terrain.resident.remove(&id) {
+            terrain.mesh_bytes -= r.bytes;
+            terrain.float_format_bytes -= r.float_bytes;
             commands.entity(r.entity).despawn();
         }
     }
@@ -741,6 +769,8 @@ fn stream_terrain(
         triangles,
         queued: queued as u32,
         in_flight: terrain.pool.in_flight() as u32,
+        mesh_mb: (terrain.mesh_bytes / 1_000_000) as u32,
+        float_format_mb: (terrain.float_format_bytes / 1_000_000) as u32,
         missing,
         altitude: (tf.translation.length() as f64 - terrain.lod.radius) as f32,
         disturbed,

@@ -168,8 +168,33 @@ inside one LOD distance band, but a 64-interval patch at SSE 16 spans more than 
 answer, drawing parent quadrants separately, multiplies patch entities by 4, which is the
 per-patch cost that already limits the main thread.
 
-**Cost:** the morph data doubles the vertex size (40 → 80 bytes), which puts SSE 16 at ~2.4 GB of
-peak terrain VRAM, over the 2 GB budget. A compressed vertex format (I-005) is therefore required.
+**Cost:** the morph data doubles a float vertex (40 → 80 bytes), which put SSE 16 at ~2.4 GB of
+peak VRAM, over budget. Hence the compact format below.
+
+### Patch vertex format
+
+`DECIDED` (from [I-005](./spikes/E3-lod-and-quadtree.md#follow-up-compressed-vertex-format-i-005)) —
+**32 bytes per vertex**, carrying both morph states, with 16-bit indices (a 65 × 65 patch with
+skirts has 4 485 vertices):
+
+| Data | Format | Bytes |
+|---|---|---|
+| Own position, parent position | 2 × Unorm16x4, fractions of the patch's box | 16 |
+| Own and parent normal | Snorm16x4, two octahedral encodings | 8 |
+| Own colour, parent colour | 2 × Unorm8x4, gamma 2 | 8 |
+
+- The box covers both morph shapes and the skirts, and **is the entity transform** (translation =
+  box minimum, scale = box size). The shader needs no per-patch data, so patches still batch, and
+  the culling bounds are the unit box.
+- The quantisation step is a fixed **~1/1100 of the sample spacing at every level**, because the
+  box scales with the patch, so coarse levels do not need 32-bit positions. This holds for any
+  body radius.
+- Normals are world-space and bypass the model matrix (its scale is the box, not geometry).
+  Octahedral 16-bit round-trips within 0.01°.
+- Colour is stored gamma-2 so dark tones do not band in 8 bits.
+
+Measured at SSE 16: terrain mesh data 331 MB against 783 MB in the float format, and peak VRAM above
+baseline 1.34–1.39 GB against 2.44 GB, within the 2 GB terrain budget.
 
 ---
 
