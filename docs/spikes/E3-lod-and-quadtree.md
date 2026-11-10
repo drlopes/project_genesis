@@ -210,4 +210,51 @@ cargo run --release -p spike_app -- --script --sse 8
 Interactive flight: `cargo run --release -p spike_app -- --sse 16` (right mouse to look, WASD to
 move, Q/E down/up, Shift faster, F starts the scripted fly-in).
 
-Result: PENDING.
+**Result (2026-11-10): neither threshold acceptable, "way too much popping at both levels".**
+Skirts with instant LOD switches fail visually. Per the stop rule, morphing is tried once (below).
+
+## Geomorphing (second round)
+
+### Why the threshold was not the cause
+
+Every LOD change was instantaneous, and four things snapped at once: geometry (children replace
+the parent in one frame), colour (coarse bands were tinted by height, finer ones by biome),
+lighting (normals from each level's own geometry), and detail (the band-limit fade is evaluated per
+patch, so it advances in steps). A lower threshold only makes each snap smaller.
+
+### Why time-based, not distance-based
+
+Distance-based morphing (CDLOD-style) blends each vertex by its distance, which requires every
+vertex of a level-*k* patch to lie inside level *k*'s distance band. With 64-interval patches at
+SSE 16, a patch at its split moment spans ~78–168 sample spacings in distance: wider than a whole
+band (a factor of 2). CDLOD avoids this by drawing parent quadrants separately, which means 4× the
+patch entities, which is the cost that failed grid 33. So the spike morphs **over time**:
+
+- Every vertex carries its own state and its parent level's state (position, normal, colour),
+  sampled at the parent's spacing and band and interpolated with the parent's triangulation. A
+  unit test checks that a fully morphed child reproduces its parent.
+- **Split:** a new child starts in its parent's exact shape and morphs to its own over 0.5 s
+  (`--morph-s`). A parent that is itself still morphing is held until it settles.
+- **Merge:** the children morph back into the parent's shape first; the parent replaces them only
+  when all have arrived.
+- Colour always comes from L2 classification, whatever band the height is evaluated at.
+- Patches share one material per (level, morph step), 32 steps, so settled patches still batch.
+- Debug keys: M morph on/off (A/B against instant switches), G grey geometry, L colour by level,
+  P freeze LOD selection.
+
+Two spike bugs fixed on the way: patches integrated and shown in the same frame never became visible
+(their entities did not exist yet), and every other skirt triangle was back-face culled (vertical
+triangles have no reliable outward winding; the spike now draws both sides).
+
+### Measurements with morphing
+
+| Run | Valid | Frame p50 / p99 / p99.9 | Main p99 | Max patches | Peak VRAM above baseline |
+|---|---|---|---|---|---|
+| grid 65, SSE 16, morph 0.5 s | yes | 3.1 / 5.7 / 8.9 ms | 1.1 ms | 1 680 | 2 441 MiB |
+| grid 65, SSE 8, morph 0.5 s | yes | 3.9 / 7.3 / 21.1 ms | **2.6 ms** | 3 969 | 3 502 MiB |
+
+The morph attributes double the vertex size (80 bytes instead of 40), so **SSE 16 now exceeds the
+2 GB terrain VRAM budget too (~2.4 GB)**: if morphing stays, the compressed vertex format (I-005)
+is needed at either threshold. SSE 8 also exceeds the 2 ms main-thread budget at p99.
+
+Re-check result: PENDING.

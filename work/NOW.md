@@ -25,22 +25,29 @@ from high orbit to the ground, and measure frames, memory, cracks, and popping. 
 - [x] Re-run the three runs disturbed by window focus; harness now flags invalid runs
 - [x] Harness: sample peak VRAM during the run; re-measured grid 65 at SSE 8 (~2.7 GB, over the
       terrain budget) and SSE 16 (1.6–2.0 GB, within)
-- [ ] **User:** watch the fly-in at SSE 8 and 16 and rate popping and cracks
+- [x] **User:** watch the fly-in at SSE 8 and 16 → **neither acceptable: too much popping at both.**
+      Skirts and instant LOD switches fail visually; per the E3 stop rule, try morphing once.
 - [x] Results in `docs/spikes/E3-lod-and-quadtree.md`; write-back to docs/10, docs/20, docs/21
-- [ ] After the user check: record the default SSE in docs/10 and E3, and accept or keep I-005
-      accordingly; triage I-004–I-007; close the goal
+- [x] Geomorphing: per-vertex parent-level position, normal, and colour; **time-based** (0.5 s)
+      rather than distance-based, because a 64-interval patch spans more than one distance band
+- [x] Consistent colour across bands (colour always from L2 classification)
+- [x] Debug view keys: M morph, G grey geometry, L colour by level, P freeze LOD
+- [x] Re-measured with morphing: SSE 16 within frame/main-thread budgets but ~2.4 GB terrain VRAM
+      (80-byte vertices); SSE 8 over on main thread (2.6 ms) and VRAM (3.5 GB)
+- [ ] User re-check with morphing; then record the default SSE, accept or keep I-005, triage
+      I-004–I-007, close the goal
 
 ## Where we stopped
 
-E3 measured and written up; E9 done (static Bevy + `rust-lld`). Everything is decided except the
-default error threshold (SSE 16 vs 8), which needs the user's visual check.
+First visual check failed (popping at SSE 8 and 16). Time-based geomorphing implemented, verified
+by screenshots (`--shots`) and re-measured. This is the one morphing round the stop rule allows.
 
 ## Waiting on the user
 
-1. **E3 visual check.** From `spikes/`, run
-   `cargo run --release -p spike_app -- --script --sse 16` and then `--sse 8`. Rate popping
-   (patches visibly changing detail) and cracks (gaps between patches). SSE 16 fits every budget;
-   SSE 8 needs I-005 (compressed vertices) to fit terrain VRAM.
+1. **E3 re-check with morphing.** From `spikes/`: free flight
+   `cargo run --release -p spike_app -- --sse 16`, toggling **M** to compare morph on/off; also
+   `--script --sse 16`. Is popping now acceptable at SSE 16 (or only at 8)? Either way, morphing
+   needs I-005 (compressed vertices) to fit terrain VRAM.
 
 ## Up next
 
