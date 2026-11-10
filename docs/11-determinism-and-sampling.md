@@ -240,6 +240,10 @@ Maintain a small set of **golden seeds** with expected descriptor hashes:
 This catches accidental drift in generation, which is otherwise invisible until a player reports
 that their base is now underwater.
 
+Golden hashes are checked in CI on **Windows and Linux**, in release and debug builds, on every push.
+[E2](./spikes/E2-determinism.md) established the pattern and confirmed that generation is
+bit-identical across threads, evaluation order, build profile, and OS.
+
 ---
 
 ## Save and version policy

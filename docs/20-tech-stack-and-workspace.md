@@ -79,8 +79,13 @@ genesis/
 ├── data/
 │   └── core/               # the core content pack (layout in 16)
 ├── docs/
-└── tools/
-    └── doc-checks/
+├── spikes/                 # throwaway experiments (separate workspace, shared target/)
+├── tools/
+│   ├── doc-checks/
+│   └── clean.ps1
+├── .github/workflows/ci.yml
+├── .vscode/settings.json
+└── AGENTS.md               # working habits for humans and agents
 ```
 
 Dependency direction (arrows point at dependencies):
@@ -167,6 +172,12 @@ made in the Phase 1 spike, and either must accept our field as the terrain colli
 - **Release profile:** full optimisation, LTO evaluated in the spike.
 - **Formatting and lints:** `rustfmt` and `clippy` are mandatory and run in CI. Warnings are
   errors in CI.
+- **One `target/` directory.** The `spikes/` workspace builds into the root `target/`
+  (`spikes/.cargo/config.toml`), so dependencies are built once.
+- **Keep build data small.** `tools/clean.ps1` prunes incremental caches (`-All` does a full
+  `cargo clean`); run it when a task is done. `.vscode/settings.json` excludes `target/` and
+  `node_modules/` from watching, search, and the explorer, and gives rust-analyzer its own
+  subfolder of `target/`. The working habits are in `AGENTS.md`.
 
 ---
 
@@ -181,8 +192,10 @@ made in the Phase 1 spike, and either must accept our field as the terrain colli
 | Benchmark | `criterion` | per-layer sample cost, bake time |
 | Docs | `tools/doc-checks` | TOML blocks, links, anchors |
 
-`PROPOSED` — CI on GitHub Actions: Windows and Linux runners; fmt, clippy, test, golden, validate,
-doc-checks.
+`DECIDED` — CI on GitHub Actions (`.github/workflows/ci.yml`), on every push to `main` and every
+pull request: Windows and Linux runners run fmt, clippy (warnings are errors), tests, and the E2
+determinism check against recorded hashes in release and debug; a separate job runs the doc checks.
+Content validation and production golden tests join the same job when those crates exist.
 
 ---
 

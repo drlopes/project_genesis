@@ -90,6 +90,12 @@ depend on body size also run at **8 km** and **40 km**, pending Q4.
 
 Run in this order: E1 and E2 need no engine and gate everything else.
 
+| Experiment | Status | Result |
+|---|---|---|
+| E1 — Field cost | **done** | pass; [results](./spikes/E1-field-cost.md) |
+| E2 — Determinism | **done** | pass on Windows and Linux; [results](./spikes/E2-determinism.md) |
+| E3–E9 | not started | need the Bevy app |
+
 ### E1 — Field cost
 
 | | |
