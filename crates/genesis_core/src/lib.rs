@@ -5,6 +5,7 @@
 //! See `docs/20-tech-stack-and-workspace.md#determinism-rules`.
 
 pub mod math;
+pub mod noise;
 pub mod rng;
 pub mod seed;
 
