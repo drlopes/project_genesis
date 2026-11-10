@@ -55,9 +55,9 @@ Initial budgets, to be confirmed or revised by the spike:
 | LOD update per frame (from 10) | ≤ 1 ms | — |
 | Terrain + scatter VRAM | ≤ 2 GB | — |
 | Terrain + scatter + voxel RAM per resident body | ≤ 1.5 GB | — |
-| Full L0–L4 sample, single thread | ≤ 4 µs | — |
-| L0–L2 sample, single thread | ≤ 1 µs | — |
-| Body bake (core + caches) | ≤ 2 s on worker threads | — |
+| Full L0–L4 sample, single thread | ≤ 4 µs | 1.18 µs ([E1](./spikes/E1-field-cost.md)) |
+| L0–L2 sample, single thread | ≤ 1 µs | 1.05 µs ([E1](./spikes/E1-field-cost.md)) |
+| Body bake (core + caches) | ≤ 2 s on worker threads | 62 ms, 1 thread, pyramid + caches ([E1](./spikes/E1-field-cost.md)) |
 | Edit → remesh visible | ≤ 50 ms | — |
 | Incremental build after a one-line change in `genesis_gen` | ≤ 15 s | — |
 

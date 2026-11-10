@@ -12,7 +12,16 @@ const path = require('path');
 const { parse } = require('smol-toml');
 
 const docsDir = path.resolve(__dirname, '..', '..', 'docs');
-const files = fs.readdirSync(docsDir).filter(f => f.endsWith('.md')).sort();
+
+// All .md files under docs/, as forward-slash paths relative to docs/.
+function walk(dir, prefix = '') {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+    e.isDirectory()
+      ? walk(path.join(dir, e.name), `${prefix}${e.name}/`)
+      : e.name.endsWith('.md') ? [`${prefix}${e.name}`] : []
+  );
+}
+const files = walk(docsDir).sort();
 const read = f => fs.readFileSync(path.join(docsDir, f), 'utf8');
 const lineOf = (text, index) => text.slice(0, index).split(/\r?\n/).length;
 
@@ -75,7 +84,10 @@ for (const file of files) {
     const anchor = m[2] ? decodeURIComponent(m[2].slice(1)) : null;
     if (/^[a-z]+:/i.test(target)) continue; // external URL
     const where = `${file}:${lineOf(text, m.index)}`;
-    const targetFile = target === '' ? file : path.normalize(target).replace(/\\/g, '/');
+    // Resolve relative to the linking file's own folder, then express relative to docs/.
+    const targetFile = target === ''
+      ? file
+      : path.posix.normalize(path.posix.join(path.posix.dirname(file), target));
     if (target !== '' && !fs.existsSync(path.join(docsDir, targetFile))) {
       failures.push(`${where}: missing file ${target}`);
       continue;

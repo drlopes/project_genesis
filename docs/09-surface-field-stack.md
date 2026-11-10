@@ -562,24 +562,29 @@ and still match.
 
 ## Performance budget
 
-Cost is dominated by **content count**, not by arithmetic. The region index and `feature_scale`
-exist to keep the per-sample work bounded.
+Measured in [E1](./spikes/E1-field-cost.md), cost is dominated by **noise evaluations and
+repeated `h0` evaluations**, not by content count: going from 8 to 32 biomes adds about 30%. One
+`gradient3` costs ~14 ns; `h0` costs ~166 ns and a full sample evaluates it four times (itself,
+the orographic upwind sample, and two slope differences).
 
-| Stage | Budget per sample | Guard |
-|---|---|---|
-| L0 | 1 pyramid fetch + up to 3 deltas | skip zero terms |
-| L1 | ~4 scalar fields | reuse across neighbouring samples |
-| L2 | candidates from the region index | cap candidate biomes/suites per sample |
-| L3 | active suites only | `feature_scale` and context gate |
-| L4 | near field only | distance and LOD gate |
+| Stage | Work per sample | Measured (E1, 1 thread) | Guard |
+|---|---|---|---|
+| L0 | 1 pyramid fetch + up to 3 deltas | ~168 ns | skip zero terms; **spatial index for craters** |
+| L1 | ~4 scalar fields + 1 upwind `h0` | ~242 ns | low frequency; reuse across neighbouring samples |
+| L2 | 2 slope `h0` + 5 noise + classifier | ~644 ns | region index; soft budget *K* |
+| L3 | active suites only | ~77 ns (4 suites) | `feature_scale` and context gate |
+| L4 | near field only | ~51 ns | distance and LOD gate |
+| **Total** | | **~1.2 µs** (budget 4 µs) | L0–L2 ~1.05 µs (budget 1 µs) |
 
 Rules:
 
-- Cap the number of candidate biomes and suites per sample. If the cap is hit, the inspector must
-  report it; silent truncation is a content bug.
-- Cache the macro pyramid, lake list, and region index. Never cache L1–L4 globally; they are cheap
-  to recompute and caching them explodes memory.
-- Treat all numbers here as placeholders until the Phase 1 slice measures them.
+- The soft budget in [19](./19-biome-classification.md#7-the-soft-budget) bounds L2 continuously.
+  The inspector reports where it is active; it is not an error.
+- Cache the macro pyramid, lake list, region index, and water-distance field. Never cache L1–L4
+  sample values globally; they are cheap to recompute and caching them explodes memory.
+- Any new per-sample `h0` evaluation or noise field is a cost decision: it is the dominant term.
+  `PROPOSED` (from E1): bake the classification inputs that need extra `h0` evaluations (slope,
+  orographic upwind term) on the macro grid if E4 needs the throughput.
 
 ---
 

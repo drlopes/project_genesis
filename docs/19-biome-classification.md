@@ -454,6 +454,10 @@ zero-score biomes.
 
 All of these are data, in the classification preset of the core pack, not code constants.
 
+[E1](./spikes/E1-field-cost.md) measured the classifier at ~265 ns per sample with a palette of 16,
+and found a mean of 2.7 active families per sample (maximum 5). *K* = 4 rarely binds, so it stays.
+The look-related defaults (*k*, mosaic, jitter) are chosen in E8.
+
 ---
 
 ## Invariants

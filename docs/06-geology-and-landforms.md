@@ -78,6 +78,10 @@ reads planetary age from the surface without being told.
 `DECIDED` — cratering is age-driven and province-based. It is baked into the macro field at low
 resolution and refined at query time.
 
+`DECIDED` (from [E1](./spikes/E1-field-cost.md)) — the query-time crater term uses a **spatial
+index** (cube-sphere cells listing the craters whose influence radius overlaps them). A linear scan
+of only 48 craters was already half of `h0`'s cost, and an ancient world has thousands.
+
 ---
 
 ## Erosion regimes

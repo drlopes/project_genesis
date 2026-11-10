@@ -252,7 +252,8 @@ ordering, promotion, and persistence rules are in
 
 ### Asynchronous generation
 
-- Generate chunks on worker threads.
+- Generate chunks on worker threads. Size the generation pool to **physical cores**: in
+  [E1](./spikes/E1-field-cost.md), 16 SMT threads were slower than 8 on an 8-core CPU.
 - Budget generation time per frame (e.g. a few milliseconds) across a queue.
 - Prioritise by: distance, screen coverage, player trajectory, collision needs.
 - Use a lower-LOD placeholder until a chunk is ready, so there is never a hole.
