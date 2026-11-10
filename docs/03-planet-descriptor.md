@@ -382,7 +382,8 @@ the outputs of earlier ones.
 9. **Region layers** — sample ecological/geological/material region parameters.
 10. **Biosphere** — level and density, from climate and hydrosphere.
 11. **Biome palette and landform suites** — chosen from the axes, region layers, and biosphere
-    level, with suite parameters sampled per body.
+    level, with suite parameters sampled per body. Palette selection is specified in
+    [19](./19-biome-classification.md#palette-selection).
 12. **Aquatic layer** — water body type, photic depth, turbidity, currents, benthic biome
     palette, pelagic zones, vent/reef sites, ice cover. Depends on hydrosphere, climate, geology,
     and biosphere. See [15](./15-aquatic-environments.md).

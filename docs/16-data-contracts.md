@@ -40,7 +40,7 @@ Rules:
 ### Content
 
 Content is authored data: biomes, suites, materials, palettes, scatter presets, zones, overlays,
-system profiles. Its IDs are namespaced:
+ecotones, system profiles. Its IDs are namespaced:
 
 ```
 <namespace>:<type>/<name>
@@ -48,6 +48,7 @@ system profiles. Its IDs are namespaced:
 core:biome/temperate_forest
 core:suite/dune_seas
 core:overlay/corrupted_forest
+core:ecotone/forest_edge
 core:profile/oasis
 core:material/basalt
 mod.example:biome/glass_forest
@@ -386,6 +387,8 @@ data/
     scatter/*.toml
     zones/*.toml
     overlays/*.toml
+    ecotones/*.toml
+    classification.toml   # tuning constants for 19 (sharpness, budget, jitter, …)
   mods/
     <mod>/
       manifest.toml

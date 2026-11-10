@@ -120,6 +120,11 @@ are not painted regions.
 `PROPOSED` — start with `sandy_shelf`, `rocky_reef`, `muddy_basin`, `abyssal_plain`, and grow.
 Freshwater and exotic-solvent sets are later.
 
+The benthic stratum needs its own `fallback = true` biome for lifeless or exotic water bodies.
+`PROPOSED`: a `bare_seafloor` biome (sediment and rock, no life) plays the role `barren` plays on
+land. Benthic and aerial weights blend across the waterline; see
+[19 — Biome Classification](./19-biome-classification.md#3-stratum-blending).
+
 ### Depth bands are world-relative
 
 Do **not** use Earth's absolute depths (200 m, 1000 m, 4000 m). Planets are tens of kilometres

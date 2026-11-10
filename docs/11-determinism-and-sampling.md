@@ -90,6 +90,17 @@ The index is baked into the descriptor (`plates[i]`, `craters[i]`, `lakes[i]`), 
 always reproduces the same feature. Feature lists are therefore **append-only within a generator
 version**; removing or reordering an entry is a generator-version change.
 
+Content-keyed draws use the content ID instead of an index, so adding content never moves an
+existing draw:
+
+```text
+paletteSeed = H(contentSeed, "palette", familyID)       // per-body palette weight
+mosaicSeed  = H(contentSeed, "mosaic",  familyID)       // per-family patch noise
+jitterSeed  = H(contentSeed, "jitter",  axisName)       // classification axis jitter
+```
+
+See [19 — Biome Classification](./19-biome-classification.md).
+
 ### Tag rules
 
 1. **Tags are lowercase ASCII, stable, and append-only.** A tag is never renamed or reused for a

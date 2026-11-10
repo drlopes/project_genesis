@@ -48,6 +48,10 @@ Keep it current. An out-of-date decision log is worse than none.
 | D35 | Variation is drawn at the coarsest owning scale; per-body draws are frozen, per-sample draws are pure | [12](./12-authoring-and-tuning.md#variation-budgets-and-per-body-draws), [11](./11-determinism-and-sampling.md#the-diversity-audit) |
 | D36 | Modules declare typed parameter schemas; descriptor params validate against the declared version | [13](./13-generator-modules.md#module-registry-and-parameter-schemas), [16](./16-data-contracts.md#file-layout-and-packs) |
 | D37 | LOD bands are spacing-defined and body-independent; quadtree depth is per body; bands gate content, actual spacing drives the fade | [10](./10-lod-and-streaming.md#quadtree-level-versus-lod-band), [09](./09-surface-field-stack.md#band-limiting-and-lod), [16](./16-data-contracts.md#deriving-lod-bands-from-feature-scale) |
+| D38 | Biome weights use power normalisation (zero stays zero), a soft top-*K* budget, an ε fallback, and soft stratum blending; every step is continuous | [19](./19-biome-classification.md) |
+| D39 | Variants compete within their family; families compete on the max of their members' suitability | [19](./19-biome-classification.md#11-variants-two-stage-families), [17](./17-biome-and-landform-format.md#variants) |
+| D40 | Adjacency is handled by ecotones at runtime and an incompatibility audit at bake | [19](./19-biome-classification.md#10-ecotones), [07](./07-biomes-and-ecology.md#soft-classification-and-blending) |
+| D41 | Biome borders use axis-value jitter, not positional domain warp; patchiness comes from a per-family mosaic prior | [19](./19-biome-classification.md#2-jitter), [09](./09-surface-field-stack.md#domain-warping) |
 
 ---
 

@@ -109,6 +109,11 @@ Fields:
 | `landform_bias` | no | Suite weights for the geological province |
 | `tags` | no | Free-form, used by overlays and queries |
 | `gameplay` | no | Forageables, hazards, cover, etc. |
+| `selectable` | no | Default `true`. `false` = never competes in classification; appears only via an ecotone |
+| `fallback` | no | Default `false`. Exactly one biome per stratum sets `true`; see [19](./19-biome-classification.md#8-the-fallback) |
+| `requires_biosphere` | no | Minimum biosphere level (`none`, `microbial`, `complex`, `exotic`) for palette selection |
+| `mosaic` | no | `{ scale = metres, strength = 0.. }`; within-climate patchiness; see [19](./19-biome-classification.md#6-the-prior-and-the-mosaic) |
+| `incompatible_with` | no | Biome IDs that must never border this one; **audit only**, see [19](./19-biome-classification.md#ecotones-replace-adjacency-constraints) |
 
 Fields marked **yes** may be inherited through `extends` (except `kind`, which is always
 explicit); the fully resolved entry must have them.
@@ -122,38 +127,36 @@ preferred when a value differs from the default.
 Each axis maps to an expression. Four forms:
 
 ```toml
-# 1. Range with soft edges: 1 inside, 0 beyond falloff
+# 1. Range with soft edges: 1 inside, smoothstep to 0 over the falloff distance
 temp = { range = [270, 300], falloff = 8 }
 
 # 2. Piecewise-linear curve, clamped at the ends
 moisture = { curve = [[0.0, 0.0], [0.3, 0.6], [0.6, 1.0], [1.0, 0.8]] }
 
-# 3. Enum membership
+# 3. Soft enum membership: sum of the sample's substrate weights in the set
 substrate = { any_of = ["soil", "sand"] }
 # or: substrate = { none_of = ["ice", "rock"] }
 
-# 4. Weight multiplier (optional on any form)
-altitude = { range = [0, 1800], falloff = 400, weight = 0.8 }
+# 4. Importance exponent (optional on any form): score ^ importance
+altitude = { range = [0, 1800], falloff = 400, importance = 0.8 }
 ```
+
+`importance` is an exponent, not a multiplier. `1^γ = 1`, so it changes how sharply an axis falls
+off without changing where the axis is satisfied. `0` ignores the axis.
 
 ### Scoring and blending
 
 ```
-score(biome, sample) = Π  axis_score(axis)
-                       (or max if mode = "any")
-
-weighted(biome)      = score × weight
-biome_weights        = normalise(weighted)   # softmax with tunable sharpness
+S(biome) = Π_axis  axisScore ^ importance     # or max when mode = "any"
 ```
 
-- The default combine mode is **product** (all conditions must hold, softly).
-- `mode = "any"` on the suitability map uses the maximum instead.
-- Normalisation is a softmax with a global `sharpness` (softer = smoother transitions).
-- If all scores are zero, the classifier falls back to `weight` alone; if that is also zero, it
-  returns the stratum's `barren`-equivalent. This should be rare and is logged in the inspector.
+Suitability is combined with the biome's `weight`, its per-body palette weight, and its mosaic,
+then normalised with a power law so that **a score of zero always means a weight of zero**. The
+full algorithm, including the soft budget, fallback, ecotones, and variant families, is in
+[19 — Biome Classification](./19-biome-classification.md). This section only defines what the
+fields mean.
 
-There is no separate blend pass. Soft weights *are* the blend (see
-[09 — Surface Field Stack](./09-surface-field-stack.md)).
+There is no separate blend pass. Soft weights *are* the blend.
 
 ---
 
@@ -184,7 +187,37 @@ Rules (from [16](./16-data-contracts.md)):
 - A bare string in `scatter_add` / `scatter_remove` is shorthand for a preset reference with
   default density and scale, e.g. `"alpine_shrub"` means `{ preset = "alpine_shrub" }`.
 - A variant may not change `stratum`.
-- Variants are selected by the same classifier; they compete with all other biomes.
+- Variants compete **only within their family**: the family (the top-level biome and its variant
+  tree) competes against other families, then its weight is split among its members. Adding a
+  variant therefore does not reshuffle the rest of the biome map. See
+  [19](./19-biome-classification.md#11-variants-two-stage-families).
+
+### Ecotones
+
+An ecotone injects a transition biome where two families mix. It is its own content type
+(`core:ecotone/<name>`):
+
+```toml
+[ecotone.forest_edge]
+between  = ["temperate_forest", "temperate_grassland"]
+biome    = "forest_edge"
+strength = 0.6
+
+[biome.forest_edge]
+display_name  = "Forest Edge"
+kind          = "biome"
+stratum       = "aerial"
+selectable    = false            # only appears through the ecotone
+palette       = "green_temperate"
+feature_scale = 1.0
+scatter       = ["shrub_thicket", "broadleaf_sapling"]
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `between` | yes | Exactly two family IDs, same stratum |
+| `biome` | yes | The injected biome; should be `selectable = false` |
+| `strength` | no | Default `1.0`; peak injected weight at a 50/50 border |
 
 ### Overlays
 
@@ -300,14 +333,16 @@ and designers tune without reading code.
 
 ### Context matching
 
-A suite is eligible for a sample when all declared context conditions hold:
+Context is **soft**, scored the same way as biome suitability, so suite borders are as continuous
+as biome borders:
 
-- `strata` — the sample's stratum is in the list,
-- `substrates` — the substrate is in the list,
-- `biomes` — the biome weight is non-zero for at least one listed biome,
-- `slope` — the sample's slope is within range.
+- `strata` — the sample's stratum weight for the listed strata (summed),
+- `substrates` — soft membership: the sum of the sample's substrate weights in the list,
+- `biomes` — the sum of the listed families' weights,
+- `slope` — a range; it takes the same `falloff` as a suitability range (default 5°).
 
-Eligible suites are weighted by `weight × landform_bias` and normalised. The terrain is the
+The context score is the product of the declared conditions. Suites are weighted by
+`context × weight × landform_bias` and normalised; a context score of zero means zero weight. The terrain is the
 weighted sum of suite contributions (plus the base terrain), as described in
 [09](./09-surface-field-stack.md). Suites do not replace each other; they blend.
 
@@ -453,6 +488,12 @@ In addition to the shared checks in [16](./16-data-contracts.md):
 11. Scatter `anchor`, `slope_max`, `altitude`, `depth`, and `zone` are consistent.
 12. Zone `depth_fraction` ranges do not overlap.
 13. Weights are non-negative; normalisation is reported.
+14. Exactly one `fallback = true` biome per stratum in the resolved content set.
+15. A selectable biome has a non-empty `suitability` map (an empty map scores 1 everywhere).
+16. `falloff = 0` is a warning: it creates a hard border.
+17. Ecotone `between` IDs resolve to two different families of the same stratum; the injected
+    biome resolves and is in that stratum (warn if it is `selectable`).
+18. `incompatible_with` IDs resolve; the relation is treated as symmetric.
 
 ---
 

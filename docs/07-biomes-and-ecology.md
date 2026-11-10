@@ -67,14 +67,18 @@ biome            e.g. desert
 Variants are chosen from the same climate inputs (altitude, moisture, latitude) but share the
 biome's identity. This gives **within-biome variety** without needing a multi-biome planet.
 
+A biome and its variants form a **family**. Families compete with each other; a family's weight is
+then split among its members. UI and gameplay read the family ("temperate forest"), visuals read
+the member ("alpine temperate forest"). See
+[19 — Biome Classification](./19-biome-classification.md#11-variants-two-stage-families).
+
 `PROPOSED` — three levels (biome → variant → local cover) if needed. Two is enough to start.
 
 ### Initial biome set
 
 | Biome | Climate | Notes |
 |---|---|---|
-| `ocean` | any with water | not a land biome; the water surface |
-| `coast` | land/water boundary | beaches, tidal flats |
+| `coast` | land/water boundary | beaches, tidal flats; blends with benthic biomes across the waterline |
 | `desert` | hot/cold, dry | variants: erg, hamada, polar |
 | `grassland` | temperate, moderate moisture | |
 | `savanna` | warm, seasonal moisture | |
@@ -86,8 +90,11 @@ biome's identity. This gives **within-biome variety** without needing a multi-bi
 | `alpine` | high altitude, any latitude | rock, snow, ice |
 | `wetland` | waterlogged | marsh, bog, swamp |
 | `volcanic` | active geology | ash plains, lava fields |
-| `barren` | no biosphere | the catch-all for uninhabited worlds |
+| `barren` | no biosphere | the aerial `fallback`; the catch-all for uninhabited worlds |
 | `cryo` | frozen water/volatiles | ice sheets, glaciers |
+
+There is no `ocean` biome. Below the waterline a sample is **benthic** and uses the benthic table;
+the water surface itself is never classified.
 
 `PROPOSED` — extend freely; fantasy-inspired biomes are supported by the same mechanism (they
 are just climate/substrate combinations with different palettes and scatter rules).
@@ -111,19 +118,25 @@ scatter.
 Hard classification creates visible seams. Use **soft classification**:
 
 1. Each biome has a **suitability function** over the climate/substrate inputs.
-2. Weights are computed (e.g. via softmax over suitability, or normalised radial basis).
+2. Suitability times a per-body prior is normalised with a power law, so an unsuitable biome
+   always gets exactly zero weight.
 3. Terrain detail and materials are blended using those weights.
 
 Because blending is a property of the weighting function, there is **no separate "blend pass"**.
-Transitions are smooth by construction. See [09 — Surface Field Stack](./09-surface-field-stack.md).
+Transitions are smooth by construction. The algorithm is specified in
+[19 — Biome Classification](./19-biome-classification.md).
 
-Additional tools for natural transitions:
+Tools for natural transitions:
 
-- **Domain warping** — warp the climate coordinates before classification, so boundaries are
-  irregular rather than smooth contours.
-- **Adjacency constraints** — a biome graph can bias which biomes may neighbour which,
-  preventing implausible edges (e.g. rainforest directly against polar ice) without hard rules.
-- **Edge modifiers** — ecotones (forest edge, marsh margin) get their own scatter rules.
+- **Axis jitter** — band-limited noise on temperature, moisture, altitude, and slope before
+  scoring, so borders are irregular rather than following climate contours.
+- **Mosaic** — per-family noise in the prior, so two equally suitable biomes form patches (groves,
+  meadows, clearings) instead of a uniform mix.
+- **Ecotones** — transition biomes (forest edge, marsh margin, salt crust) injected where two
+  families meet, with their own scatter.
+- **Incompatibility audit** — pairs that must never touch (rainforest against polar ice) are
+  declared in content and checked at bake. A per-sample classifier cannot see its neighbours, so
+  this is an audit that flags content to fix, not a runtime rule.
 
 `DECIDED` — soft weights, no post-hoc blending pass.
 
@@ -274,7 +287,7 @@ narrative (overlays do).
 - **One biome = one visual look** — fixed by variants and landform suites.
 - **Biome palette sampled uniformly** — leads to every forest looking the same. Sample palette
   weights, density, and scatter variance per planet.
-- **No adjacency constraints** — produces implausible biome neighbours.
+- **No incompatibility audit** — implausible biome neighbours ship unnoticed.
 
 ---
 
@@ -288,3 +301,4 @@ narrative (overlays do).
   evaluation order.
 - [12 — Authoring & Tuning](./12-authoring-and-tuning.md) — biome data files.
 - [15 — Aquatic Environments](./15-aquatic-environments.md) — benthic and pelagic biomes.
+- [19 — Biome Classification](./19-biome-classification.md) — the classification algorithm.

@@ -55,13 +55,14 @@ Start with [Vision & Pillars](./00-vision.md), then [World Model](./01-world-mod
 | [16 — Data Contracts](./16-data-contracts.md) | IDs, references, units, versioning, merge semantics, LOD metadata | You are defining or changing any schema |
 | [17 — Biome & Landform Format](./17-biome-and-landform-format.md) | Concrete biome, suite, palette, scatter, and zone schemas | You are authoring or validating content |
 | [18 — Collision & Edits](./18-collision-and-edits.md) | Solid model, raycasts, waterline, edit records, voxel boundary | You are writing physics, interaction, or persistence code |
+| [19 — Biome Classification](./19-biome-classification.md) | The L2 algorithm: inputs, scoring, normalisation, ecotones, variants, palette selection | You are implementing or debugging biome weights |
 
 ---
 
 ## Reading orders
 
 - **Mental model (30 min):** 00 → 01 → 03 → 04.
-- **Generation pipeline:** 02 → 04 → 05 → 06 → 07 → 09.
+- **Generation pipeline:** 02 → 04 → 05 → 06 → 07 → 19 → 09.
 - **Runtime:** 01 → 03 → 09 → 10 → 11.
 - **Physics & persistence:** 09 → 18 → 10 → 11 → 03.
 - **Content/tuning:** 04 → 07 → 08 → 12.
@@ -89,6 +90,9 @@ different things in procedural generation. These are the definitions used throug
 | **Region layer** | One of several independent maps that give a planet regional variation: ecological, geological, material, narrative. See [07](./07-biomes-and-ecology.md). |
 | **Landform suite** | A parameterized family of geomorphology (dune seas, karst, hoodoos, glacial valleys…) applied on top of a biome. See [06](./06-geology-and-landforms.md). |
 | **Stratum** | The environment class of a sample: `aerial`, `benthic`, `pelagic`, `subglacial`, `subterranean`. Selects the classifier and scatter rules. See [15](./15-aquatic-environments.md). |
+| **Biome family** | A top-level biome plus its variant tree. Families compete in classification; a family's weight is then split among its members. UI and gameplay read families. See [19](./19-biome-classification.md#11-variants-two-stage-families). |
+| **Ecotone** | A transition biome injected where two families mix (forest edge, marsh margin). See [19](./19-biome-classification.md#10-ecotones). |
+| **Mosaic** | Per-family noise in the classification prior that turns an even overlap of two suitable biomes into patches. See [19](./19-biome-classification.md#6-the-prior-and-the-mosaic). |
 | **Benthic** | The seafloor or lakebed surface. Uses the surface pipeline with a water-aware classifier. |
 | **Pelagic** | The water column. Uses a volume query, not terrain. |
 | **Volume query** | A runtime sample of a non-surface volume (water column, atmosphere), returning zone, light, current, scatter, and hazards. See [15](./15-aquatic-environments.md). |

@@ -47,7 +47,8 @@ SurfaceSample {
   altitude       : float       // metres above sea level; negative underwater
   climate        : ClimateSample
   material       : MaterialSample
-  biomeWeights   : map<contentID, float>   // normalised, sums to 1
+  biomeWeights   : map<contentID, float>   // leaves (biomes + variants), sums to 1
+  biomeFamilies  : map<contentID, float>   // top-level families, sums to 1; for UI/gameplay
   suiteWeights   : map<contentID, float>   // normalised, may be empty
   water          : WaterSample | null
   flags          : { submerged, shoreline, ice, edited }
@@ -256,51 +257,39 @@ inspector.
 
 ## L2 — Classification
 
-L2 turns continuous fields into **weights**, never a single painted biome.
-
-### Candidate broad-phase
-
-The region layers from [07 — Biomes & Ecology](./07-biomes-and-ecology.md) are a coarse spatial
-index. They do not paint biomes; they narrow the candidate set so the classifier does not evaluate
-every biome on every sample.
+L2 turns continuous fields into **weights**, never a single painted biome. The algorithm is
+specified in full in [19 — Biome Classification](./19-biome-classification.md); this section is
+the summary the field stack depends on.
 
 ```text
-candidates = regionIndex.candidates(p)      // ecological + geological + material
+classify(p, lod) -> BiomeWeights { families, leaves, strata }
 ```
 
-The index is baked with the macro pyramid. A sample evaluates only the biomes and suites whose
-region overlaps `p`, capped by a per-sample budget.
+1. **Inputs** come from `h0` and L1 only: annual-mean climate, `altitude = h0 − seaSurface`, slope
+   of `h0`, and substrate as a **weight vector** from the material region layer. Landform detail
+   cannot move biome borders. The final `SurfaceSample.altitude` includes L3 and is for UI/debug
+   only.
+2. **Jitter** perturbs axis values with band-limited noise, which makes borders irregular without
+   re-evaluating fields at a warped position.
+3. **Strata** blend softly across the waterline and cave mouths.
+4. **Candidates** are the frozen palette filtered by a conservative region index (an exact
+   optimisation, never an approximation).
+5. **Suitability** is a product of smoothstep-edged axis scores; families use the max over their
+   variants.
+6. **Prior** is the global weight × per-body palette weight × a per-family mosaic noise, which
+   gives patches instead of uniform mixes.
+7. **Soft budget** keeps the top *K* families continuously.
+8. **Fallback** adds `ε` to the stratum's fallback biome, so the barren take-over is smooth.
+9. **Normalisation** is `v^k / Σ v^k`: zero stays zero.
+10. **Ecotones** inject transition biomes where two families mix.
+11. **Variants** split each family's weight among its members.
 
-### Domain warp
+Rules the rest of the stack relies on:
 
-Classification coordinates are warped before scoring so borders are irregular:
-
-```text
-p' = p + A_w · noise3(p / S_w + offset)
-```
-
-`A_w` is proportional to the feature scale of the boundaries being warped; `S_w` is the warp
-wavelength. The warp field must be band-limited, or it reintroduces aliasing.
-
-### Suitability and weights
-
-Each candidate biome is scored over the axis registry in
-[17](./17-biome-and-landform-format.md#the-axis-registry):
-
-```text
-score_i   = Π axisScore(axis, sample)        // or max when mode = "any"
-weighted_i = score_i · biomeWeight_i
-biomeWeights = softmax(weighted_i, sharpness)
-```
-
-The `altitude` axis uses the **pre-L3** height (`h0` plus L0 deltas), so landform detail cannot
-move biome borders. The final `SurfaceSample.altitude` includes L3 and is for UI/debug only.
-
-- Evaluate candidates in **sorted content-ID order** so floating-point accumulation is
+- Evaluate everything in **sorted content-ID order** so floating-point accumulation is
   deterministic.
-- If every score is zero, fall back to `biomeWeight` alone; if that is also zero, use the
-  stratum's barren-equivalent and log it in the inspector.
-- Suite weights come from `landform_bias × contextMatch × suiteWeight`, normalised the same way.
+- Suite weights use the same soft scoring for their context; see
+  [17](./17-biome-and-landform-format.md#context-matching).
 - Material weights come from composition and weathering (see
   [06](./06-geology-and-landforms.md) and [07](./07-biomes-and-ecology.md)).
 
@@ -432,7 +421,8 @@ sampleSurface(p, lod):
         position: p, normal: n, height: h,
         altitude: h − seaSurface,
         climate: c, material: m,
-        biomeWeights: w.biomeWeights, suiteWeights: w.suiteWeights,
+        biomeWeights: w.leaves, biomeFamilies: w.families,
+        suiteWeights: w.suiteWeights,
         water: water, flags: flags
     }
 ```
@@ -501,7 +491,6 @@ See [10 — LOD & Streaming](./10-lod-and-streaming.md).
 Domain warping is the main tool for making procedural fields look natural rather than
 mathematical:
 
-- warp the climate coordinates before biome classification, so biome borders are irregular;
 - warp the landform suite coordinates, so dune fields and karst boundaries meander;
 - warp the macro field slightly at mid frequencies, to avoid perfectly smooth plate edges.
 
@@ -515,7 +504,11 @@ warp(p, S, A) = p + A · vec3(
 
 Warping is done with a low-frequency noise field whose amplitude is proportional to the feature
 scale it is applied to. It must itself be band-limited, or it reintroduces aliasing. Use separate
-offsets per purpose (climate, biome, suite) so the warps are decorrelated.
+offsets per purpose (suite, macro) so the warps are decorrelated.
+
+Biome borders do **not** use positional warp. They use value jitter on the classification axes,
+which looks equivalent and avoids evaluating climate twice; see
+[19](./19-biome-classification.md#2-jitter).
 
 ---
 
@@ -671,7 +664,7 @@ explodes memory.
 | 2. Biome definition dispersed by temperature | regional variation | **L2** — soft classification of L1 climate fields (derived, not painted) |
 | 3. Smaller features: pillars, rocks, ravines, hills, dunes | landform detail | **L3** — landform suite modules |
 | 4. Most detailed changes, cleanup | micro detail | **L4** — near-field only |
-| 5. Blending biome transitions | seamless transitions | **removed** — blending is inherent in L2 weights + domain warp |
+| 5. Blending biome transitions | seamless transitions | **removed** — blending is inherent in L2 weights + axis jitter |
 | (rivers) | water features | **removed** — lakes only; outflow paths optionally used as dry valleys |
 
 Two explicit corrections carried from the design discussions:
@@ -693,3 +686,5 @@ Two explicit corrections carried from the design discussions:
 - [11 — Determinism & Sampling](./11-determinism-and-sampling.md) — purity, hashing, and RNG.
 - [16 — Data Contracts](./16-data-contracts.md) — feature scale, units, and frozen data.
 - [17 — Biome & Landform Format](./17-biome-and-landform-format.md) — suitability, suites, and scatter.
+- [18 — Collision & Edits](./18-collision-and-edits.md) — collision and the edit overlay on this field.
+- [19 — Biome Classification](./19-biome-classification.md) — the L2 algorithm in full.
