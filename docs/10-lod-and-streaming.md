@@ -222,17 +222,11 @@ granularity, and how edits are garbage-collected. Resolve these with the Phase 1
 
 ### The voxel spike
 
-The spike exists to replace guesses with measurements. It should answer:
-
-- What voxel size gives acceptable visual quality at the intended interaction distance?
-- What are the memory and meshing costs per chunk?
-- Where does the mesh take over without a visible seam?
-- What is the maximum edit radius that stays within the frame budget?
-- How does voxel size interact with `feature_scale` (see
-  [16](./16-data-contracts.md#lod-and-feature-metadata))?
-
-Record the answers in [14](./14-open-questions-and-roadmap.md) and update the `feature_scale`
-validation with the real number.
+The voxel numbers are settled by experiment **E7** of the
+[Phase 1 spike plan](./21-phase-1-spike-plan.md#e7--voxels-and-edits-q2): voxel size, region
+radius, meshing cost, the seam at the mesh boundary, the maximum edit radius within the frame
+budget, and edit storage and garbage collection. The result also sets the voxel size used by the
+`feature_scale` validation in [16](./16-data-contracts.md#lod-and-feature-metadata).
 
 ---
 
@@ -277,6 +271,8 @@ ordering, promotion, and persistence rules are in
 - mesh building: ≤ 2 ms per frame amortised,
 - LOD update: ≤ 1 ms,
 - draw calls: bounded by patch count; use instancing for scatter.
+
+These are tested by the [Phase 1 spike](./21-phase-1-spike-plan.md#reference-hardware-and-budgets).
 
 ---
 

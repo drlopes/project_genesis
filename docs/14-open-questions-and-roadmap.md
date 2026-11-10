@@ -175,7 +175,8 @@ Build in this order. Each step de-risks the next.
 ### Phase 1 — One planet, end to end
 - Implement `rocky` macro geology (plates + craters) at low resolution.
 - Solve sea level from hypsometry; render an ocean shell.
-- Run the voxel-resolution spike and record the numbers (Q2).
+- Run the Phase 1 spike, experiments E1–E9, and record the numbers, including Q2
+  ([21](./21-phase-1-spike-plan.md)).
 - Implement the cube-sphere quadtree with the five LOD bands
   ([10](./10-lod-and-streaming.md#lod-levels-and-budgets)).
 - Implement collision from the same field.
