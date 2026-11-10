@@ -36,4 +36,26 @@ this goal or next · **S3** when convenient.
 
 ## Closed
 
-_None yet._
+### B-003 — Free-flight camera pivots, crawls, or flickers after flying around the body
+- **Severity:** S2 · **Status:** fixed (E3, 2026-11-10)
+- **Found:** 2026-11-10, reported by the user during the E3 re-check; present since the first
+  free-flight camera.
+- **Where:** `spikes/app/src/main.rs`, `drive_camera`.
+- **Actual:** after flying for a while or circling the body, the camera turned by itself,
+  sometimes seemed to freeze, and the terrain flickered.
+- **Causes:**
+  1. Heading was measured from "north" (world +Y projected onto the horizon). The default heading
+     is north, so flying forward goes over the pole, where that frame is singular: north swings
+     round, a fallback axis takes over at |up.y| > 0.99, and the view flips (the unit test
+     reproduces a 180° turn in one step).
+  2. Altitude, and therefore speed, was measured from the reference sphere. Over oceans and basins,
+     which lie below it, it clamped to 1 m, so the camera crawled at 2 m/s, which looked frozen.
+  3. Introduced with geomorphing: frustum-culling boxes covered only a patch's own shape, so
+     mid-morph patches near the screen edge could be culled while visible.
+- **Fix:** orientation is carried along the sphere by parallel transport and re-levelled, with no
+  reference direction (`spikes/app/src/flycam.rs`, tests `crossing_the_poles_does_not_turn_the_camera`
+  and `look_keeps_the_horizon_level_and_clamps_pitch`); altitude and speed are measured from the
+  coarse ground, and the camera stays 2 m above it; each patch gets a culling box covering both
+  morph shapes.
+- **Lesson for the production camera** (E5): never parameterise orientation on a sphere by angles
+  from a fixed direction.

@@ -7,6 +7,7 @@
 //!          --morph-s 0.5 (geomorph duration; 0 = instant LOD switches)
 //! Debug keys: M morph on/off, G grey geometry, L colour by level, P freeze LOD selection
 
+mod flycam;
 mod material;
 mod metrics;
 mod patch;
@@ -165,8 +166,6 @@ struct Run {
 
 #[derive(Component)]
 struct FlyCam {
-    yaw: f32,
-    pitch: f32,
     /// Frame counter for throttling window-title updates.
     frame: u32,
 }
@@ -262,13 +261,10 @@ fn setup(mut commands: Commands, config: Res<Config>) {
             far: 1.0e7,
             ..default()
         }),
-        Transform::from_translation(start_pos).looking_at(Vec3::ZERO, Vec3::Y),
-        // Start looking straight down at the body (it fills ~30° of view from this distance).
-        FlyCam {
-            yaw: 0.0,
-            pitch: -1.55,
-            frame: 0,
-        },
+        // Start looking (almost) straight down at the body; it fills ~30° of view from here.
+        Transform::from_translation(start_pos)
+            .with_rotation(flycam::initial(start_pos, -flycam::MAX_PITCH)),
+        FlyCam { frame: 0 },
     ));
     // Lighting is done in the terrain shader (sun direction in the material), so no light entity.
     commands.insert_resource(Terrain {
@@ -363,26 +359,32 @@ fn drive_camera(
         *tf = Transform::from_translation(pos).looking_at(target, up);
         return;
     }
-    // Free flight: speed scales with altitude so both orbit and ground are usable.
+    // Free flight. Altitude, and so speed, is measured from the ground (coarse height or sea
+    // surface), not from the reference sphere: over oceans and basins, which lie below it, the old
+    // radius-relative altitude clamped to 1 m and the camera crawled at 2 m/s.
+    let body = terrain.body.clone();
+    let ground_radius = move |p: Vec3| {
+        let d = p.normalize().as_dvec3();
+        body.radius + (body.h0([d.x, d.y, d.z]) as f64).max(body.sea_surface as f64)
+    };
     let up = tf.translation.normalize();
-    let alt = (tf.translation.length() as f64 - terrain.body.radius).max(1.0) as f32;
+    let alt = (tf.translation.length() as f64 - ground_radius(tf.translation)) as f32;
     let speed = alt.clamp(2.0, 50_000.0)
         * if keys.pressed(KeyCode::ShiftLeft) {
             5.0
         } else {
             1.0
         };
+    // Orientation has no reference direction (see flycam.rs): mouse look turns about the local up
+    // and the camera's right axis, and movement carries the orientation along the sphere.
     if mouse.pressed(MouseButton::Right) {
-        fly.yaw -= motion.delta.x * 0.003;
-        fly.pitch = (fly.pitch - motion.delta.y * 0.003).clamp(-1.55, 1.55);
+        tf.rotation = flycam::look(
+            tf.rotation,
+            up,
+            -motion.delta.x * 0.003,
+            -motion.delta.y * 0.003,
+        );
     }
-    // Orientation is yaw/pitch in the local frame: up = away from the body centre, north = world
-    // +Y projected onto the horizon (world +X near the poles). A stable north keeps the view from
-    // lurching as the camera moves; the earlier `any_orthonormal_vector` frame did not.
-    let north_ref = if up.y.abs() < 0.99 { Vec3::Y } else { Vec3::X };
-    let north = (north_ref - up * up.dot(north_ref)).normalize();
-    let base = Transform::IDENTITY.looking_to(north, up);
-    tf.rotation = base.rotation * Quat::from_rotation_y(fly.yaw) * Quat::from_rotation_x(fly.pitch);
     fly.frame = fly.frame.wrapping_add(1);
     if let Ok(mut win) = window.single_mut()
         && fly.frame % 15 == 1
@@ -420,7 +422,14 @@ fn drive_camera(
     if keys.pressed(KeyCode::KeyQ) {
         dir -= up;
     }
-    tf.translation += dir.normalize_or_zero() * speed * time.delta_secs();
+    let mut p = tf.translation + dir.normalize_or_zero() * speed * time.delta_secs();
+    // Stay at least 2 m above the coarse ground. Finer bands can still rise a little above it.
+    let min_r = ground_radius(p) + 2.0;
+    if (p.length() as f64) < min_r {
+        p = p.normalize() * min_r as f32;
+    }
+    tf.translation = p;
+    tf.rotation = flycam::transport(tf.rotation, up, p.normalize());
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -501,6 +510,15 @@ fn stream_terrain(
             run.recorder.patches_discarded += 1;
             continue;
         }
+        // Culling box over both shapes: a morphing vertex can lie outside its own-shape bounds,
+        // and Bevy's automatic box (own positions only) would cull a visible patch.
+        let aabb = bevy::camera::primitives::Aabb::enclosing(
+            p.positions.iter().zip(&p.morph_offsets).flat_map(|(a, o)| {
+                let a = Vec3::from_array(*a);
+                [a, a + Vec3::from_array(*o)]
+            }),
+        )
+        .expect("patch has vertices");
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::RENDER_WORLD,
@@ -523,6 +541,7 @@ fn stream_terrain(
             .spawn((
                 Mesh3d(meshes.add(mesh)),
                 MeshMaterial3d(material),
+                aabb,
                 Transform::from_xyz(p.centre[0] as f32, p.centre[1] as f32, p.centre[2] as f32),
                 Visibility::Hidden,
             ))

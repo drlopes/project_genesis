@@ -6,6 +6,12 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 
 ## [Unreleased]
 
+### Fixed
+- B-003: the spike's free-flight camera flipped over the poles, crawled at 2 m/s below the
+  reference sphere, and morphing patches could be frustum-culled while visible. Orientation now
+  uses parallel transport (`spikes/app/src/flycam.rs`), speed is measured from the ground, and
+  culling boxes cover both morph shapes.
+
 ### Added
 - E3 geomorphing in `spikes/app`: custom terrain material and WESL shader; each vertex carries its
   parent level's position, normal, and colour, and patches morph over 0.5 s on split and merge
