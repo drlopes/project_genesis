@@ -39,6 +39,8 @@ Instructions for anyone, human or AI agent, making changes here. The full proces
    powershell -ExecutionPolicy Bypass -File tools/clean.ps1 -All   # full cargo clean, when target/ is large
    ```
    Delete any scratch directories or probe files you created (in `%TEMP%` or the repo).
+   With Bevy, `target/` grows past 10 GB after builds in several profiles or a linker change; the
+   script warns above 5 GB, and then `-All` is the right call.
 6. **Commit and push**, with IDs in the message where relevant. Check `git status` first: never
    commit build output or local-only material.
 

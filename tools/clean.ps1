@@ -51,3 +51,12 @@ if (Test-Path $stray) {
 }
 
 Write-Host "After:  target/ = $(Size $target)"
+
+# Stale artefacts (old profiles, a changed linker, earlier dependency versions) are not pruned by
+# the default mode and can reach >10 GB with Bevy (seen in E3). Suggest a full clean.
+if (-not $All -and (Test-Path $target)) {
+    $gb = ((Get-ChildItem -Recurse -File -Force $target -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum) / 1GB
+    if ($gb -gt 5) {
+        Write-Host ("target/ is still {0:N1} GB: mostly stale artefacts. Run with -All for a full clean (the next build recompiles everything)." -f $gb)
+    }
+}
