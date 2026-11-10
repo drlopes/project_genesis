@@ -189,12 +189,15 @@ Measured, therefore decided:
 7. **Main-thread integration rate, not worker throughput, is the first ceiling** as patch counts grow.
    Per-patch overhead is captured as I-006.
 
-Depends on the user's visual check:
+Decided after two rounds of user checks:
 
-8. **Default error threshold.** SSE 16 meets every budget with the current vertex format. SSE 8
-   needs the compressed vertex format (I-005) to meet the terrain VRAM budget. If SSE 16 looks good
-   enough in the fly-in, it becomes the default and I-005 stays optional; if it pops visibly,
-   SSE 8 becomes the default and I-005 is accepted as a Phase 1 requirement.
+8. **Skirts alone fail visually**: instant LOD switches popped at SSE 8 and 16 alike.
+9. **Time-based geomorphing fixes popping** (user re-check: "no more popping"). Recorded as the
+   seam/transition decision in [docs/10](../10-lod-and-streaming.md#seams).
+10. **Default error threshold: SSE 16.** No visible need for SSE 8, which costs ~2.4× the patches
+    and exceeds the main-thread budget with morphing.
+11. **The compressed vertex format (I-005) is required**: morph data doubles the vertex size, and
+    SSE 16 then peaks at ~2.4 GB of terrain VRAM against 2 GB.
 
 ## User check
 
@@ -257,4 +260,6 @@ The morph attributes double the vertex size (80 bytes instead of 40), so **SSE 1
 2 GB terrain VRAM budget too (~2.4 GB)**: if morphing stays, the compressed vertex format (I-005)
 is needed at either threshold. SSE 8 also exceeds the 2 ms main-thread budget at p99.
 
-Re-check result: PENDING.
+**Re-check result (2026-11-10): accepted at SSE 16, "no more popping".** The same check found a
+free-flight camera bug present since the first version (flips over the poles, crawling below the
+reference sphere) and a morph-culling bug, both fixed (B-003).

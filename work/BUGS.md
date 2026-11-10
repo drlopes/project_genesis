@@ -57,5 +57,6 @@ this goal or next · **S3** when convenient.
   and `look_keeps_the_horizon_level_and_clamps_pitch`); altitude and speed are measured from the
   coarse ground, and the camera stays 2 m above it; each patch gets a culling box covering both
   morph shapes.
+- **Fixed in:** `649fea1`
 - **Lesson for the production camera** (E5): never parameterise orientation on a sphere by angles
   from a fixed direction.

@@ -131,9 +131,9 @@ stay split while error_px > SSE / 2   (hysteresis)
 
 `DECIDED` (from [E3](./spikes/E3-lod-and-quadtree.md)) — the metric above, with a **65 × 65** patch
 grid. The useful SSE range is **8–16 px**: at 2 px the near-ground cut is ~5 000 patches and ~45 M
-triangles, and each doubling of SSE cuts both by ~2.5×. SSE 16 meets every Phase 1 budget with the
-current vertex format; SSE 8 needs a compressed vertex format (I-005) to fit the terrain VRAM
-budget. The default between them is set by the E3 visual check.
+triangles, and each doubling of SSE cuts both by ~2.5×. **Default: SSE 16**, accepted in the E3
+visual check once LOD changes morph (see [Seams](#seams)). SSE 8 costs ~2.4× the patches, exceeds
+the 2 ms main-thread budget at p99 with morphing, and showed no visual need.
 
 ### Seams
 
@@ -146,9 +146,30 @@ Adjacent patches at different LODs will crack. Options, pick one:
 - **Morphing** — vertex positions are blended toward the coarser LOD near boundaries. Best
   visual result, more shader work.
 
-`PROPOSED` — start with skirts; upgrade to morphing if the seams are visible during flight. E3
-used skirts (depth: four sample spacings) with no hole frames at SSE 16; the visual verdict on
-cracks and popping is the E3 user check.
+`DECIDED` (from [E3](./spikes/E3-lod-and-quadtree.md#geomorphing-second-round)) — **skirts against
+cracks plus time-based geomorphing against popping.** Skirts alone (depth: four sample spacings)
+left no holes, but instant LOD switches popped visibly at every threshold tried, because geometry,
+colour, normals, and detail all changed in one frame. With geomorphing the user check found no
+popping:
+
+- Every vertex also stores its **parent level's** position, normal, and colour, sampled at the
+  parent's spacing and band and interpolated along the parent's own triangulation (the quad
+  diagonal must match).
+- **Split:** a new patch starts in its parent's exact shape and morphs into its own over **0.5 s**.
+  A parent still morphing in is held until it settles.
+- **Merge:** the finer patches morph back into the parent's shape; the parent replaces them only
+  when all have arrived.
+- **Colour comes from the same classification at every band**, so it cannot change at a band
+  boundary.
+- Culling bounds must cover both shapes.
+
+**Time-based, not distance-based**: distance-based morphing (CDLOD) needs every vertex of a patch
+inside one LOD distance band, but a 64-interval patch at SSE 16 spans more than a band. CDLOD's
+answer, drawing parent quadrants separately, multiplies patch entities by 4, which is the
+per-patch cost that already limits the main thread.
+
+**Cost:** the morph data doubles the vertex size (40 → 80 bytes), which puts SSE 16 at ~2.4 GB of
+peak terrain VRAM, over the 2 GB budget. A compressed vertex format (I-005) is therefore required.
 
 ---
 

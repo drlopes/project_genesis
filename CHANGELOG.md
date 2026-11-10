@@ -70,6 +70,10 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
   depth. Commits from the E1 harness onward have new hashes; docs cite both where it matters.
 
 ### Docs
+- E3 closed: default SSE 16; skirts plus time-based geomorphing decided in docs/10 (skirts alone
+  failed the visual check; morphing passed). The compressed vertex format (I-005) is accepted and
+  is the next goal, because morph data puts terrain VRAM at ~2.4 GB. I-004 and I-006 parked until
+  E4. docs/21 status: E3 done.
 - E3 results (pending the user's visual check): 65 × 65 patches; the error metric's useful range is
   8–16 px, not the planned 1–4; SSE 16 meets every budget, SSE 8 exceeds terrain VRAM (~2.7 GB)
   without compressed vertices; body size does not change the picture. Four streaming rules from
