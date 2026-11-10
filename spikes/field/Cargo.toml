@@ -1,0 +1,9 @@
+[package]
+name = "spike_field"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "E1: a synthetic body with a cost-faithful L0–L4 field stack and the 19 classifier."
+
+[dependencies]
+genesis_core = { path = "../../crates/genesis_core" }

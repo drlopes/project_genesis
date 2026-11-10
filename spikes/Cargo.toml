@@ -1,0 +1,8 @@
+# Throwaway spike code (docs/21-phase-1-spike-plan.md). Deliberately a separate workspace:
+# nothing here is production code, and production crates never depend on it.
+[workspace]
+resolver = "3"
+members = ["field"]
+
+[profile.release]
+debug = 1

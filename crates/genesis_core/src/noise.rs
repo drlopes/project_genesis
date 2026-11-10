@@ -24,13 +24,26 @@ pub fn gradient3(seed: Seed, p: [f64; 3]) -> f32 {
 
     let u = [fade(f[0]), fade(f[1]), fade(f[2])];
 
+    // Per-axis lattice terms, computed once; each corner then needs a single mix.
+    let xs = [
+        (c[0] as u64).wrapping_mul(PX),
+        (c[0].wrapping_add(1) as u64).wrapping_mul(PX),
+    ];
+    let ys = [
+        (c[1] as u64).wrapping_mul(PY),
+        (c[1].wrapping_add(1) as u64).wrapping_mul(PY),
+    ];
+    let zs = [
+        (c[2] as u64).wrapping_mul(PZ),
+        (c[2].wrapping_add(1) as u64).wrapping_mul(PZ),
+    ];
+
     let mut corners = [0.0f32; 8];
     for (i, corner) in corners.iter_mut().enumerate() {
-        let dx = (i & 1) as i64;
-        let dy = ((i >> 1) & 1) as i64;
-        let dz = ((i >> 2) & 1) as i64;
-        let h = lattice_hash(seed, c[0] + dx, c[1] + dy, c[2] + dz);
-        *corner = grad(h, f[0] - dx as f32, f[1] - dy as f32, f[2] - dz as f32);
+        let (dx, dy, dz) = (i & 1, (i >> 1) & 1, (i >> 2) & 1);
+        let h = mix64(seed.0 ^ xs[dx] ^ ys[dy] ^ zs[dz]);
+        let g = GRADIENTS[(h >> 60) as usize];
+        *corner = g[0] * (f[0] - dx as f32) + g[1] * (f[1] - dy as f32) + g[2] * (f[2] - dz as f32);
     }
 
     let x00 = lerp(corners[0], corners[1], u[0]);
@@ -123,32 +136,31 @@ fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a + (b - a) * t
 }
 
-#[inline]
-fn lattice_hash(seed: Seed, x: i64, y: i64, z: i64) -> u64 {
-    let mut h = seed.0;
-    h = mix64(h ^ (x as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
-    h = mix64(h ^ (y as u64).wrapping_mul(0xC2B2_AE3D_27D4_EB4F));
-    mix64(h ^ (z as u64).wrapping_mul(0x1656_67B1_9E37_79F9))
-}
+/// Odd 64-bit multipliers that decorrelate the three lattice axes before mixing.
+const PX: u64 = 0x9E37_79B9_7F4A_7C15;
+const PY: u64 = 0xC2B2_AE3D_27D4_EB4F;
+const PZ: u64 = 0x1656_67B1_9E37_79F9;
 
-/// Dot product with one of the 12 cube-edge gradients (Perlin's improved noise).
-#[inline]
-fn grad(h: u64, x: f32, y: f32, z: f32) -> f32 {
-    match (h >> 60) % 12 {
-        0 => x + y,
-        1 => -x + y,
-        2 => x - y,
-        3 => -x - y,
-        4 => x + z,
-        5 => -x + z,
-        6 => x - z,
-        7 => -x - z,
-        8 => y + z,
-        9 => -y + z,
-        10 => y - z,
-        _ => -y - z,
-    }
-}
+/// Perlin's 12 cube-edge gradients, padded to 16 with four repeats so a 4-bit index selects one
+/// without a modulo (the trick from Perlin's "Improving Noise", 2002).
+const GRADIENTS: [[f32; 3]; 16] = [
+    [1.0, 1.0, 0.0],
+    [-1.0, 1.0, 0.0],
+    [1.0, -1.0, 0.0],
+    [-1.0, -1.0, 0.0],
+    [1.0, 0.0, 1.0],
+    [-1.0, 0.0, 1.0],
+    [1.0, 0.0, -1.0],
+    [-1.0, 0.0, -1.0],
+    [0.0, 1.0, 1.0],
+    [0.0, -1.0, 1.0],
+    [0.0, 1.0, -1.0],
+    [0.0, -1.0, -1.0],
+    [1.0, 1.0, 0.0],
+    [-1.0, 1.0, 0.0],
+    [0.0, -1.0, 1.0],
+    [0.0, -1.0, -1.0],
+];
 
 #[cfg(test)]
 mod tests {
@@ -262,5 +274,5 @@ mod tests {
         assert_eq!(got, KNOWN);
     }
 
-    const KNOWN: [u32; 4] = [3_110_830_592, 3_186_118_018, 1_043_219_736, 1_043_421_937];
+    const KNOWN: [u32; 4] = [1_053_679_888, 3_199_783_432, 1_040_794_603, 1_040_324_217];
 }
