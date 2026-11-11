@@ -100,7 +100,7 @@ Run in this order: E1 and E2 need no engine and gate everything else.
 |---|---|---|
 | E1 — Field cost | **done** | pass; [results](./spikes/E1-field-cost.md) |
 | E2 — Determinism | **done** | pass on Windows and Linux; [results](./spikes/E2-determinism.md) |
-| E3 — LOD and quadtree | **done** | grid 65, SSE 16, skirts + time-based geomorphing; needs I-005 for VRAM; [results](./spikes/E3-lod-and-quadtree.md) |
+| E3 — LOD and quadtree | **done** | grid 65, SSE 16, skirts + time-based geomorphing, 32-byte vertices (I-005); [results](./spikes/E3-lod-and-quadtree.md) |
 | E9 — Build iteration | **done** | static Bevy + `rust-lld`, ~6 s; [results](./spikes/E3-lod-and-quadtree.md#e9--build-iteration) |
 | E4–E8 | not started | — |
 

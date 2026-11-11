@@ -72,7 +72,7 @@ they are not acted on directly.
 ## Closed
 
 ### I-005 — Compressed patch vertex format
-- **Status:** accepted → goal in the `NOW.md` queue (before E4)
+- **Status:** accepted → done (`eaa0b23`, 2026-11-11; format in docs/10 "Patch vertex format")
 - **Raised:** 2026-11-10, from E3
 - **What:** store patch vertices compactly: 16-bit positions relative to the patch, octahedral-
   encoded normals, RGBA8 colours, for both the own and the parent (morph) state.
