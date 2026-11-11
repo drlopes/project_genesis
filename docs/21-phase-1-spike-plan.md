@@ -54,7 +54,7 @@ Worker work is a **throughput** target (E4). Per-frame budgets apply only to the
 | Frame time p99 | ≤ 16.6 ms (60 fps) | SSE 16: 3.9–4.9 ms; SSE 8: 5.2–7.0 ms ([E3](./spikes/E3-lod-and-quadtree.md)) |
 | Worst frame while streaming (p99.9, scripted fly-in) | ≤ 33 ms | SSE 16: 5.7–7.0 ms; SSE 8: 6.0–16.9 ms ([E3](./spikes/E3-lod-and-quadtree.md)) |
 | Main-thread terrain work per frame: integrate finished patches (upload, spawn/despawn) + LOD update (from [10](./10-lod-and-streaming.md#frame-budget-targets)) | ≤ 2 ms | p99 SSE 16: 0.6–0.9 ms; SSE 8: 1.6–1.9 ms ([E3](./spikes/E3-lod-and-quadtree.md)) |
-| Worker generation throughput | enough for the LOD-4 ring at rover speed, 4 workers (E4) | 774 full-detail 65×65 patches/s at 4 workers, field only ([E1](./spikes/E1-field-cost.md)) |
+| Worker generation throughput | enough for the LOD-4 ring at rover speed, 4 workers (E4) | **pass**: in-app ~620 patches/s at 4 workers; rover (30 m/s at 50 m) needs ~57/s, latency p99 12 ms ([E4](./spikes/E4-streaming-throughput.md)); field only: 774/s ([E1](./spikes/E1-field-cost.md)) |
 | Terrain + scatter VRAM | ≤ 2 GB | terrain only, SSE 16 with geomorphing and the compact vertex format (I-005): mesh data 331 MB; peak VRAM above baseline incl. Bevy 1.34–1.39 GB ([E3](./spikes/E3-lod-and-quadtree.md#follow-up-compressed-vertex-format-i-005)) |
 | Total VRAM at 1440p | ≤ 6 GB (headroom on an 8 GB card) | peak ≤ 2.8 GB for the app in every run ([E3](./spikes/E3-lod-and-quadtree.md#peak-vram)) |
 | Terrain + scatter + voxel RAM per resident body | ≤ 1.5 GB | terrain only: ~0.43 GB for the whole process ([E3](./spikes/E3-lod-and-quadtree.md)) |
@@ -102,7 +102,8 @@ Run in this order: E1 and E2 need no engine and gate everything else.
 | E2 — Determinism | **done** | pass on Windows and Linux; [results](./spikes/E2-determinism.md) |
 | E3 — LOD and quadtree | **done** | grid 65, SSE 16, skirts + time-based geomorphing, 32-byte vertices (I-005); [results](./spikes/E3-lod-and-quadtree.md) |
 | E9 — Build iteration | **done** | static Bevy + `rust-lld`, ~6 s; [results](./spikes/E3-lod-and-quadtree.md#e9--build-iteration) |
-| E4–E8 | not started | — |
+| E4 — Streaming throughput | **done** | pass at rover speed; full detail while speed / height ≤ ~6 /s; workers never on all cores; [results](./spikes/E4-streaming-throughput.md) |
+| E5–E8 | not started | — |
 
 ### E1 — Field cost
 

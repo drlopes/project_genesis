@@ -14,7 +14,9 @@ they are not acted on directly.
   keeping LOD independence.
 - **Cost / risk:** one more cache (memory per body); slope resolution drops to the macro grid
   (~150 m on a 24 km body).
-- **Decision:** parked until E4 shows whether throughput needs it.
+- **Decision:** parked until E4 shows whether throughput needs it. **E4 (2026-11-11): not needed**:
+  rover speed uses ~10% of generation capacity. Stays parked; it would only raise the low-flight
+  speed cap (speed / height ≤ ~6 /s), so revisit if fast low flight becomes a design goal.
 
 ### I-002 — Multi-channel noise for classification jitter
 - **Status:** parked (revisit after E4)
@@ -24,7 +26,8 @@ they are not acted on directly.
 - **Why:** ~50 ns per sample; small, but jitter runs on every classified sample.
 - **Cost / risk:** new noise function to pin with known answers; low.
 - **Decision:** parked at the end of the work-structure goal: E1 is within budget, so this only
-  matters if E4 shows a throughput shortfall. Revisit together with I-001.
+  matters if E4 shows a throughput shortfall. Revisit together with I-001. **E4: no shortfall at
+  Phase 1 speeds**; stays parked with I-001.
 
 ### I-003 — Mirror work items to GitHub Issues when collaborators join
 - **Status:** parked
@@ -46,6 +49,7 @@ they are not acted on directly.
   collision (E6), which needs geometry around the player regardless of view.
 - **Decision:** parked at the end of E3. E4 measures streaming load; decide then whether the
   saving is needed. Note that geomorphing hides pop-in on turns only partly (0.5 s morph).
+  **E4: not needed** (throughput margin is large; memory within budget since I-005). Stays parked.
 
 ### I-006 — Fewer entities per patch set
 - **Status:** parked (revisit after E4)
@@ -57,7 +61,8 @@ they are not acted on directly.
   per-patch fixed cost, not the vertex count, set the ceiling.
 - **Cost / risk:** a custom render path is real engine work; pooling is cheap.
 - **Decision:** parked at the end of E3. E4 measures integration rate under sustained movement,
-  which is exactly what this would improve; decide with that data.
+  which is exactly what this would improve; decide with that data. **E4: main-thread terrain
+  work stayed ≤ 1.32 ms at p99 in all 16 runs** (budget 2 ms). Stays parked.
 
 ### I-007 — Revisit Bevy `dynamic_linking` at the next Bevy upgrade
 - **Status:** parked (until the next Bevy upgrade)
@@ -68,6 +73,33 @@ they are not acted on directly.
   `bevy_dylib 0.20.1` was never published.
 - **Cost / risk:** none to check; dev-only feature, never shipped.
 - **Decision:** stays parked at the end of E3; static Bevy with `rust-lld` meets the targets.
+
+### I-008 — Coverage-first generation priority
+- **Status:** new
+- **Raised:** 2026-11-11, from E4
+- **What:** order the generation queue so that a wanted patch with no displayable ancestor (it
+  would be a hole) goes before refinements of areas that are already covered, and nearest-first
+  only within each class. Equivalently: generate the coarsest missing ancestor first.
+- **Why:** at saturation, nearest-first spends the workers on fine patches under the camera and
+  leaves uncovered patches waiting. **Corrected by the E4 analysis:** the holes counted in the
+  smoke and sweep runs were all invisible far-side patches (see I-009); visible terrain stayed
+  covered and only lagged in detail. Coverage-first still matters where nothing is resident yet:
+  arrival after fast travel or a teleport (initial fill is 1.3–2.0 s with 4 workers).
+- **Cost / risk:** small change to the priority key; must not starve refinement near the camera at
+  normal speeds.
+- **Decision:** kept open at the end of E4 (no visible problem today); revisit with fast travel or
+  arrival design.
+
+### I-009 — Tighter horizon culling
+- **Status:** new
+- **Raised:** 2026-11-11, from E4
+- **What:** cull patches against the horizon with a bound that uses the patch's actual height
+  range (min/max from the macro pyramid) rather than its size plus the body's whole relief.
+- **Why:** the conservative test admits coarse patches 35–45 km away on the far side of a 24 km
+  body. They are never visible but get queued, starve under load, and made E4's hole metric count
+  ~35 000 invisible "hole" frames.
+- **Cost / risk:** needs per-patch height bounds (cheap from the pyramid); a wrong bound would cull
+  visible terrain, so test against mountains on the limb.
 
 ## Closed
 

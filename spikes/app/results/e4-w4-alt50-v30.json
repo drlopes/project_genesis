@@ -1,0 +1,20 @@
+{
+  "config": { "radius_km": 24, "grid": 65, "sse_px": 16, "spacing_scale": 1, "workers": 4, "seed": 1, "morph_s": 0.5, "path": "straight", "speed_m_s": 30, "alt_m": 50, "hold_s": 5, "move_s": 60 },
+  "duration_s": 65.0,
+  "frames": 28791,
+  "frame_ms": { "p50": 2.18, "p99": 3.29, "p999": 3.64, "max": 15.13 },
+  "terrain_main_ms": { "p50": 0.749, "p99": 1.097, "max": 1.541 },
+  "patch_build_ms": { "p50": 5.47, "p99": 8.75, "count": 4510, "discarded_stale": 0 },
+  "max_displayed_patches": 1375,
+  "max_resident_patches": 1385,
+  "max_triangles": 11976250,
+  "max_queued": 519,
+  "max_terrain_mesh_mb": 271,
+  "max_terrain_mesh_mb_float_format": 641,
+  "frames_with_missing_patches": 426,
+  "disturbed_frames": 0,
+  "valid": true,
+  "ram_mb": 428,
+  "vram": "baseline 1417 MiB, 8188 MiB / end 2637 MiB, 8188 MiB / peak 2645 MiB / peak above baseline 1228 MiB",
+  "streaming": { "initial_fill_s": 1.89, "moving_s": 60.0, "requests_per_s": 56.8, "completions_per_s": 56.8, "backlog": { "max": 12, "mean_middle_third": 0.5, "mean_last_third": 0.5, "slope_per_s": 0.00, "bounded": true }, "deficit": { "frames_fraction": 0.9594, "p99": 12, "max": 19 }, "pending": { "frames_fraction": 0.1396, "p99": 4, "max": 12 }, "hole_frames_moving": 0, "latency_ms": { "p50": 7, "p99": 12, "max": 16, "count": 3411 } }
+}

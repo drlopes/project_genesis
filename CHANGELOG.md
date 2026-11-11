@@ -49,6 +49,10 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 - Architecture docs 00–21 (vision through the Phase 1 spike plan).
 
 ### Changed
+- E4 harness in `spikes/app`: `--path straight` runs (hold, then constant speed and height),
+  streaming metrics (pending, deficit, latency, requests/completions, backlog trend, initial fill),
+  `E4_HOLE_LOG` diagnostic. Default SSE is now 16 (was 2); the integration loop always integrates
+  at least one patch per frame.
 - I-005: compact patch vertex format, 32 bytes per vertex instead of 80 (16-bit positions in a
   per-patch box used as the entity transform, octahedral normals, gamma-2 RGBA8 colours, u16
   indices). Terrain mesh data at SSE 16: 331 MB, from 783 MB; peak VRAM above baseline 1.34–1.39 GB,
@@ -75,6 +79,11 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
   depth. Commits from the E1 harness onward have new hashes; docs cite both where it matters.
 
 ### Docs
+- E4 results: pass at rover speed with 4 workers; full terrain detail while speed / height above
+  ground ≤ ~6 per second (docs/01 travel constraint, docs/10); saturation degrades detail, never
+  coverage; generation workers must never take all cores (docs/10, superseding E1's rule); the
+  integration budget must guarantee progress. Ideas I-008 (corrected), I-009 (new); I-001, I-002,
+  I-004, I-006 stay parked.
 - E3 closed: default SSE 16; skirts plus time-based geomorphing decided in docs/10 (skirts alone
   failed the visual check; morphing passed). The compressed vertex format (I-005) is accepted and
   is the next goal, because morph data puts terrain VRAM at ~2.4 GB. I-004 and I-006 parked until

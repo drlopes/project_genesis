@@ -93,6 +93,13 @@ pacing stable even if the ship gets faster later.
 `OPEN` — exact target travel times per transition (surface → orbit, planet → moon,
 planet → planet, system → system).
 
+**Constraint from terrain streaming** (`MEASURED`, [E4](./spikes/E4-streaming-throughput.md)):
+near the surface, full terrain detail holds while **speed / height above ground ≤ ~6 per second**
+(e.g. ≤ 300 m/s at 50 m, ≤ 3 km/s at 500 m) with 4 generation workers on the reference machine.
+Faster flight is possible, but the terrain stays coarser than wanted until the craft slows or
+climbs; it never shows holes. Walking and rover speeds are far inside the limit. Low-flight speed
+caps and travel times should respect this ratio rather than a fixed speed.
+
 ---
 
 ## Coordinate spaces

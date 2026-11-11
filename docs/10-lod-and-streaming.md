@@ -311,8 +311,11 @@ ordering, promotion, and persistence rules are in
 
 ### Asynchronous generation
 
-- Generate chunks on worker threads. Size the generation pool to **physical cores**: in
-  [E1](./spikes/E1-field-cost.md), 16 SMT threads were slower than 8 on an 8-core CPU.
+- Generate chunks on worker threads. Size the pool to **physical cores minus two**, never all
+  of them: in [E1](./spikes/E1-field-cost.md) SMT threads beyond physical cores made generation
+  slower, and in [E4](./spikes/E4-streaming-throughput.md) generation on all 8 cores pushed frame
+  p99 to 49 ms under load (4 workers: 2.6 ms). Four workers are the verified default on the
+  8-core reference machine.
 - Prioritise by: distance, screen coverage, player trajectory, collision needs. Re-prioritise the
   queue every frame; the camera moves faster than the queue drains.
 - Use a lower-LOD placeholder until a chunk is ready, so there is never a hole.
@@ -331,6 +334,22 @@ Rules learned the hard way in [E3](./spikes/E3-lod-and-quadtree.md#spike-bugs-fo
 - **The first ceiling is the main thread's integration rate**, not worker throughput: every patch
   carries a fixed main-thread cost. Fewer, larger patches beat many small ones (see I-006).
 
+And from [E4](./spikes/E4-streaming-throughput.md):
+
+- **The integration budget must guarantee progress.** It covers the LOD update too; when that
+  alone used the budget, nothing was ever integrated. Always integrate at least one finished patch
+  per frame.
+- **Saturation degrades detail, not coverage.** When generation falls behind, requests are
+  abandoned as the camera passes and the terrain stays coarser than wanted; coarser patches still
+  cover, so there are no visible holes.
+- **Throughput and the speed cap.** Four workers generate ~620 patches/s in the app. Load scales
+  with speed over height above ground (~1.4 requests per metre travelled at 50 m, ~0.16 at 500 m),
+  so full detail holds while **speed / height ≤ ~6 per second** (two thirds of the estimated
+  saturation). Walking and rover speeds use under 10% of capacity.
+- **Conservative horizon culling admits invisible far-side patches**, which queue last and starve
+  under load. Harmless on screen, but they distort hole metrics and waste a little generation
+  (I-009).
+
 ### Caching and eviction
 
 - Keep a pool of chunk meshes by LOD.
@@ -340,8 +359,9 @@ Rules learned the hard way in [E3](./spikes/E3-lod-and-quadtree.md#spike-bugs-fo
 ### Frame budget targets
 
 Chunk generation and mesh building run on **worker threads**, so they have a throughput target,
-not a per-frame budget: the workers must keep up with the LOD-4 ring at rover speed (E4). The
-per-frame budget is for the **main thread**:
+not a per-frame budget: the workers must keep up with the LOD-4 ring at rover speed. E4 passed it
+with large margin (30 m/s at 50 m used ~57 of ~620 patches/s with 4 workers). The per-frame budget
+is for the **main thread**:
 
 - integrating finished patches (GPU upload, spawning and despawning patch entities) plus the LOD
   update: ≤ 2 ms per frame in total,

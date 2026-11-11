@@ -107,6 +107,8 @@ mean active families (weight > 10⁻⁴) **2.69**, maximum **5**.
    budget rarely binds and costs almost nothing ([19](../19-biome-classification.md#tuning-constants)).
 5. **Generation workers = physical cores.** SMT made throughput *worse* (16 threads slower than 8).
    Size the generation pool to physical cores; E4 confirms under load
+   (**superseded by [E4](./E4-streaming-throughput.md)**: inside the app, generation on all physical
+   cores starves the main and render threads; use physical cores minus two)
    ([10](../10-lod-and-streaming.md#asynchronous-generation)).
 6. **`libm` stays** (determinism rule 1). Its `exp` is 2.5× slower than `std`, but a sample calls
    only a handful of transcendental functions; the cost is noise in the totals.

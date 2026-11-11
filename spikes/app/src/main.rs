@@ -3,7 +3,8 @@
 //! Interactive:   cargo run --release -p spike_app
 //!                (right mouse = look, WASD = move, Q/E = down/up, Shift = fast, F = start fly-in)
 //! Scripted run:  cargo run --release -p spike_app -- --script --out e3.json [options]
-//! Options: --radius-km 24  --grid 65  --sse 2  --spacing-scale 1  --workers 4  --seed 1
+//! Options: --radius-km 24  --grid 65  --sse 16  --spacing-scale 1  --workers 4  --seed 1
+//!          --path straight --speed 30 --alt 50 --hold 5 --duration 60 (E4 straight-line runs)
 //!          --morph-s 0.5 (geomorph duration; 0 = instant LOD switches)
 //! Debug keys: M morph on/off, G grey geometry, L colour by level, P freeze LOD selection
 
@@ -56,6 +57,23 @@ struct Config {
     out: Option<String>,
     /// Directory for screenshots at fixed points of the scripted fly-in.
     shots: Option<String>,
+    /// Script path: `fly-in` (E3) or `straight` (E4: great circle at constant height).
+    straight: bool,
+    speed: f64,
+    alt: f64,
+    hold_s: f64,
+    move_s: f64,
+}
+
+impl Config {
+    /// Total scripted time.
+    fn script_len(&self) -> f64 {
+        if self.straight {
+            self.hold_s + self.move_s
+        } else {
+            SCRIPT_DESCENT_S + SCRIPT_SKIM_S
+        }
+    }
 }
 
 /// Script times (s) of the `--shots` screenshots: ~13 km, ~1 km, ~120 m, skim start, mid skim.
@@ -75,7 +93,9 @@ impl Config {
         Config {
             radius_km: num("--radius-km", 24.0),
             grid: num("--grid", 65.0) as u32,
-            sse: num("--sse", 2.0),
+            // E3 decision (docs/10). Was 2, the plan's original candidate: an E4 smoke run that
+            // relied on the default selected ~20 000 patches.
+            sse: num("--sse", 16.0),
             spacing_scale: num("--spacing-scale", 1.0),
             workers: num("--workers", 4.0) as usize,
             seed: num("--seed", 1.0) as u64,
@@ -83,19 +103,29 @@ impl Config {
             script: args.iter().any(|a| a == "--script"),
             out: get("--out"),
             shots: get("--shots"),
+            straight: get("--path").is_some_and(|p| p == "straight"),
+            speed: num("--speed", 30.0),
+            alt: num("--alt", 50.0),
+            hold_s: num("--hold", 5.0),
+            move_s: num("--duration", 60.0),
         }
     }
 
     fn json(&self) -> String {
         format!(
-            "{{ \"radius_km\": {}, \"grid\": {}, \"sse_px\": {}, \"spacing_scale\": {}, \"workers\": {}, \"seed\": {}, \"morph_s\": {} }}",
+            "{{ \"radius_km\": {}, \"grid\": {}, \"sse_px\": {}, \"spacing_scale\": {}, \"workers\": {}, \"seed\": {}, \"morph_s\": {}, \"path\": \"{}\", \"speed_m_s\": {}, \"alt_m\": {}, \"hold_s\": {}, \"move_s\": {} }}",
             self.radius_km,
             self.grid,
             self.sse,
             self.spacing_scale,
             self.workers,
             self.seed,
-            self.morph_s
+            self.morph_s,
+            if self.straight { "straight" } else { "fly-in" },
+            self.speed,
+            self.alt,
+            self.hold_s,
+            self.move_s
         )
     }
 }
@@ -122,6 +152,8 @@ struct Terrain {
     materials: HashMap<(u8, u8), Handle<TerrainMaterial>>,
     split: HashSet<NodeId>,
     resident: HashMap<NodeId, Resident>,
+    /// When each wanted, not yet integrated patch was first wanted (seconds since start; E4).
+    requested_at: HashMap<NodeId, f64>,
     /// Sum over resident patches (the terrain's own mesh memory, unlike whole-GPU VRAM).
     mesh_bytes: usize,
     float_format_bytes: usize,
@@ -280,6 +312,7 @@ fn setup(mut commands: Commands, config: Res<Config>) {
         materials: HashMap::new(),
         split: HashSet::new(),
         resident: HashMap::new(),
+        requested_at: HashMap::new(),
         mesh_bytes: 0,
         float_format_bytes: 0,
         px_per_radian: 1440.0 / (2.0 * 30f64.to_radians().tan()),
@@ -341,6 +374,32 @@ fn script_pose(body: &Body, t: f64) -> (Vec3, Vec3, Vec3) {
     (v(pos), v(target), v(d))
 }
 
+/// E4 pose: hold still for `hold_s`, then travel along a great circle at `speed` m/s, `alt` metres
+/// above the coarse ground (or sea), looking at the ground ahead. Frame-rate independent.
+fn straight_pose(body: &Body, t: f64, c: &Config) -> (Vec3, Vec3, Vec3) {
+    let r = body.radius;
+    // A different start than the fly-in, away from the poles; travel is a tangent direction.
+    let start = normalize([-0.6, 0.2, 0.75]);
+    let travel = normalize([start[2], 0.0, -start[0]]);
+    let ground = |d: [f64; 3]| (body.h0(d) as f64).max(body.sea_surface as f64);
+    let along = |th: f64| {
+        let (s, co) = (th.sin(), th.cos());
+        normalize([
+            start[0] * co + travel[0] * s,
+            start[1] * co + travel[1] * s,
+            start[2] * co + travel[2] * s,
+        ])
+    };
+    let theta = c.speed * (t - c.hold_s).max(0.0) / r;
+    let d = along(theta);
+    let h = r + ground(d) + c.alt;
+    let da = along(theta + (c.alt * 4.0 + 50.0) / r);
+    let ha = r + ground(da);
+    let v =
+        |p: [f64; 3], s: f64| Vec3::new((p[0] * s) as f32, (p[1] * s) as f32, (p[2] * s) as f32);
+    (v(d, h), v(da, ha), v(d, 1.0))
+}
+
 #[allow(clippy::too_many_arguments)]
 fn drive_camera(
     time: Res<Time>,
@@ -348,6 +407,7 @@ fn drive_camera(
     mouse: Res<ButtonInput<MouseButton>>,
     motion: Res<AccumulatedMouseMotion>,
     terrain: Res<Terrain>,
+    config: Res<Config>,
     mut run: ResMut<Run>,
     mut cam: Query<(&mut Transform, &mut FlyCam)>,
     mut window: Query<&mut Window, With<PrimaryWindow>>,
@@ -360,10 +420,12 @@ fn drive_camera(
         run.script_start = Some(now);
     }
     if let Some(t0) = run.script_start {
-        let (pos, target, up) = script_pose(
-            &terrain.body,
-            (now - t0).min(SCRIPT_DESCENT_S + SCRIPT_SKIM_S),
-        );
+        let ts = (now - t0).min(config.script_len());
+        let (pos, target, up) = if config.straight {
+            straight_pose(&terrain.body, ts, &config)
+        } else {
+            script_pose(&terrain.body, ts)
+        };
         *tf = Transform::from_translation(pos).looking_at(target, up);
         return;
     }
@@ -488,9 +550,16 @@ fn stream_terrain(
         ),
     };
     terrain.last_desired.clone_from(&desired);
+    // E4: when each missing patch was first wanted; requests the camera abandons are forgotten.
+    let now_s = run.start.elapsed().as_secs_f64();
+    let mut requested = 0u32;
     let mut wanted = HashMap::new();
     for &n in &desired {
         if !terrain.resident.contains_key(&n) {
+            terrain.requested_at.entry(n).or_insert_with(|| {
+                requested += 1;
+                now_s
+            });
             let c = n.centre_dir();
             let r = terrain.lod.radius;
             let d = ((cam_pos[0] - c[0] * r).powi(2)
@@ -505,10 +574,18 @@ fn stream_terrain(
     // 2. Integrate finished patches within the main-thread budget. Patches the camera no longer
     //    wants are discarded unopened: integrating them only to despawn them wastes the budget.
     let desired_set: HashSet<NodeId> = desired.iter().copied().collect();
+    terrain
+        .requested_at
+        .retain(|id, _| desired_set.contains(id));
+    let mut completed = 0u32;
     // Spawned this frame: the entities only exist after the commands apply, so these patches are
     // not displayable until next frame (showing them now would leave a one-frame hole).
     let mut fresh: HashSet<NodeId> = HashSet::new();
-    while t.elapsed().as_secs_f64() * 1000.0 < INTEGRATE_BUDGET_MS {
+    // The budget covers selection too, so guarantee progress: always integrate at least one patch
+    // (E4: with an expensive selection, a strict budget integrated nothing, ever).
+    let mut received = 0u32;
+    while received == 0 || t.elapsed().as_secs_f64() * 1000.0 < INTEGRATE_BUDGET_MS {
+        received += 1;
         let Some(p) = terrain.pool.try_recv() else {
             break;
         };
@@ -517,6 +594,12 @@ fn stream_terrain(
         if !desired_set.contains(&p.id) {
             run.recorder.patches_discarded += 1;
             continue;
+        }
+        completed += 1;
+        if let Some(t0) = terrain.requested_at.remove(&p.id) {
+            run.recorder
+                .latency
+                .push((now_s, ((now_s - t0) * 1000.0) as f32));
         }
         // Positions are fractions of the patch box over both morph shapes, so the culling box is
         // the unit box in local space (Bevy cannot compute it: there is no float POSITION).
@@ -638,6 +721,28 @@ fn stream_terrain(
         }
         if !found {
             missing += 1;
+            // Diagnostic: E4_HOLE_LOG=<seconds> logs holes after that time.
+            let log_after = std::env::var("E4_HOLE_LOG")
+                .ok()
+                .and_then(|v| v.parse::<f64>().ok());
+            if log_after.is_some_and(|a| now_s > a) {
+                let c = n.centre_dir();
+                let r = terrain.lod.radius;
+                let d = ((cam_pos[0] - c[0] * r).powi(2)
+                    + (cam_pos[1] - c[1] * r).powi(2)
+                    + (cam_pos[2] - c[2] * r).powi(2))
+                .sqrt();
+                let cam_len = (cam_pos[0].powi(2) + cam_pos[1].powi(2) + cam_pos[2].powi(2)).sqrt();
+                let occ = r + terrain.lod.min_height;
+                let horizon = (cam_len * cam_len - occ * occ).max(0.0).sqrt();
+                info!(
+                    "hole: level {} edge {:.0} m, distance {:.0} m, camera horizon {:.0} m",
+                    n.level,
+                    std::f64::consts::FRAC_PI_2 * r / (1u64 << n.level) as f64,
+                    d,
+                    horizon
+                );
+            }
         }
     }
 
@@ -772,6 +877,13 @@ fn stream_terrain(
         mesh_mb: (terrain.mesh_bytes / 1_000_000) as u32,
         float_format_mb: (terrain.float_format_bytes / 1_000_000) as u32,
         missing,
+        deficit: desired.iter().filter(|n| !shown.contains(n)).count() as u32,
+        pending: desired
+            .iter()
+            .filter(|n| !shown.contains(n) && !terrain.resident.contains_key(n))
+            .count() as u32,
+        requested,
+        completed,
         altitude: (tf.translation.length() as f64 - terrain.lod.radius) as f32,
         disturbed,
         ..default()
@@ -808,7 +920,7 @@ fn record_frame(
     }
     if config.script {
         let t0 = run.script_start.unwrap_or(0.0);
-        if t - t0 >= SCRIPT_DESCENT_S + SCRIPT_SKIM_S {
+        if t - t0 >= config.script_len() {
             let json = run.recorder.summary_json(
                 &config.json(),
                 metrics::ram_mb(),
@@ -825,6 +937,9 @@ fn record_frame(
                     })
                 ),
                 t - t0,
+                config
+                    .straight
+                    .then(|| run.recorder.streaming_json(t0 + config.hold_s)),
             );
             match &config.out {
                 Some(path) => {

@@ -16,6 +16,14 @@ pub struct Frame {
     pub mesh_mb: u32,
     pub float_format_mb: u32,
     pub missing: u32,
+    /// Wanted patches not shown at their own level (covered by a coarser one, or missing).
+    pub deficit: u32,
+    /// Part of the deficit not yet generated and integrated: the throughput measure. The rest is
+    /// held back on purpose (a parent finishing its morph-in, or a patch integrated this frame).
+    pub pending: u32,
+    /// Patches newly requested this frame, and integrated this frame.
+    pub requested: u32,
+    pub completed: u32,
     pub altitude: f32,
     /// Window unfocused or minimised: the OS may throttle frames, so the run is not valid.
     pub disturbed: bool,
@@ -27,6 +35,16 @@ pub struct Recorder {
     pub patch_build_ms: Vec<f32>,
     pub patches_built: u64,
     pub patches_discarded: u64,
+    /// (time, ms) from a patch first being wanted to its integration (E4).
+    pub latency: Vec<(f64, f32)>,
+}
+
+fn mean(v: &[f64]) -> f64 {
+    if v.is_empty() {
+        0.0
+    } else {
+        v.iter().sum::<f64>() / v.len() as f64
+    }
 }
 
 fn pct(sorted: &[f32], p: f64) -> f32 {
@@ -41,12 +59,12 @@ impl Recorder {
     /// Per-frame data as CSV, for finding where on the path a peak happens.
     pub fn frames_csv(&self) -> String {
         let mut s = String::from(
-            "t,altitude_m,frame_ms,terrain_ms,displayed,resident,triangles,queued,in_flight,missing\n",
+            "t,altitude_m,frame_ms,terrain_ms,displayed,resident,triangles,queued,in_flight,missing,deficit,requested,completed\n",
         );
         for f in &self.frames {
             let _ = writeln!(
                 s,
-                "{:.3},{:.1},{:.3},{:.3},{},{},{},{},{},{}",
+                "{:.3},{:.1},{:.3},{:.3},{},{},{},{},{},{},{},{},{}",
                 f.t,
                 f.altitude,
                 f.frame_ms,
@@ -56,10 +74,86 @@ impl Recorder {
                 f.triangles,
                 f.queued,
                 f.in_flight,
-                f.missing
+                f.missing,
+                f.deficit,
+                f.requested,
+                f.completed
             );
         }
         s
+    }
+
+    /// E4 streaming summary for a run that holds still until `move_start` and then moves.
+    /// Returns a JSON object (no trailing newline).
+    pub fn streaming_json(&self, move_start: f64) -> String {
+        // Initial fill: first frame with every wanted patch shown at its own level.
+        let fill = self
+            .frames
+            .iter()
+            .find(|f| f.t > 0.5 && f.deficit == 0 && f.missing == 0)
+            .map_or("null".to_string(), |f| format!("{:.2}", f.t));
+        let moving: Vec<&Frame> = self.frames.iter().filter(|f| f.t >= move_start).collect();
+        let dur = moving.last().map_or(0.0, |l| l.t - moving[0].t).max(1e-6);
+        let requests: u64 = moving.iter().map(|f| f.requested as u64).sum();
+        let completions: u64 = moving.iter().map(|f| f.completed as u64).sum();
+        let backlog: Vec<f64> = moving
+            .iter()
+            .map(|f| (f.queued + f.in_flight) as f64)
+            .collect();
+        let third = backlog.len() / 3;
+        let (mid, last) = (
+            mean(&backlog[third..2 * third]),
+            mean(&backlog[2 * third..]),
+        );
+        // Bounded: the least-squares trend of the backlog over the moving phase adds no more
+        // than 5% of its mean plus 20 patches over the whole run. (A relative test on means
+        // accepted a backlog growing from 28 000 to 32 000.)
+        let ts: Vec<f64> = moving.iter().map(|f| f.t).collect();
+        let (mt, mb) = (mean(&ts), mean(&backlog));
+        let (mut num, mut den) = (0.0, 0.0);
+        for (t, b) in ts.iter().zip(&backlog) {
+            num += (t - mt) * (b - mb);
+            den += (t - mt) * (t - mt);
+        }
+        let slope = if den > 0.0 { num / den } else { 0.0 };
+        let bounded = slope * dur <= 0.05 * mb + 20.0;
+        let deficit_frames = moving.iter().filter(|f| f.deficit > 0).count();
+        let mut deficit: Vec<f32> = moving.iter().map(|f| f.deficit as f32).collect();
+        deficit.sort_by(f32::total_cmp);
+        let pending_frames = moving.iter().filter(|f| f.pending > 0).count();
+        let mut pending: Vec<f32> = moving.iter().map(|f| f.pending as f32).collect();
+        pending.sort_by(f32::total_cmp);
+        let hole_frames = moving.iter().filter(|f| f.missing > 0).count();
+        let n = moving.len().max(1) as f64;
+        let mut lat: Vec<f32> = self
+            .latency
+            .iter()
+            .filter(|(t, _)| *t >= move_start)
+            .map(|(_, ms)| *ms)
+            .collect();
+        lat.sort_by(f32::total_cmp);
+        format!(
+            "{{ \"initial_fill_s\": {fill}, \"moving_s\": {dur:.1}, \
+             \"requests_per_s\": {:.1}, \"completions_per_s\": {:.1}, \
+             \"backlog\": {{ \"max\": {:.0}, \"mean_middle_third\": {mid:.1}, \"mean_last_third\": {last:.1}, \"slope_per_s\": {slope:.2}, \"bounded\": {bounded} }}, \
+             \"deficit\": {{ \"frames_fraction\": {:.4}, \"p99\": {:.0}, \"max\": {:.0} }}, \
+             \"pending\": {{ \"frames_fraction\": {:.4}, \"p99\": {:.0}, \"max\": {:.0} }}, \
+             \"hole_frames_moving\": {hole_frames}, \
+             \"latency_ms\": {{ \"p50\": {:.0}, \"p99\": {:.0}, \"max\": {:.0}, \"count\": {} }} }}",
+            requests as f64 / dur,
+            completions as f64 / dur,
+            backlog.iter().copied().fold(0.0, f64::max),
+            deficit_frames as f64 / n,
+            pct(&deficit, 0.99),
+            deficit.last().copied().unwrap_or(0.0),
+            pending_frames as f64 / n,
+            pct(&pending, 0.99),
+            pending.last().copied().unwrap_or(0.0),
+            pct(&lat, 0.5),
+            pct(&lat, 0.99),
+            lat.last().copied().unwrap_or(0.0),
+            lat.len(),
+        )
     }
 
     pub fn summary_json(
@@ -68,7 +162,9 @@ impl Recorder {
         ram_mb: Option<f64>,
         vram: &str,
         duration_s: f64,
+        streaming: Option<String>,
     ) -> String {
+        let extra = streaming.map_or(String::new(), |s| format!(",\n  \"streaming\": {s}"));
         // Skip the first second: shader compilation and the initial burst are not steady state.
         let steady: Vec<&Frame> = self.frames.iter().filter(|f| f.t > 1.0).collect();
         let mut ft: Vec<f32> = steady.iter().map(|f| f.frame_ms).collect();
@@ -91,7 +187,7 @@ impl Recorder {
              \"max_queued\": {},\n  \"max_terrain_mesh_mb\": {},\n  \
              \"max_terrain_mesh_mb_float_format\": {},\n  \"frames_with_missing_patches\": {},\n  \
              \"disturbed_frames\": {},\n  \"valid\": {},\n  \
-             \"ram_mb\": {},\n  \"vram\": \"{vram}\"\n}}\n",
+             \"ram_mb\": {},\n  \"vram\": \"{vram}\"{extra}\n}}\n",
             steady.len(),
             pct(&ft, 0.5),
             pct(&ft, 0.99),
