@@ -237,9 +237,22 @@ never operate on large coordinates.
 - Surface-local coordinates are single precision and small; convert at the boundary.
 - Physics uses a local frame around the player (or around each active body).
 
-Bevy transforms are single precision. A camera-relative frame (the `big_space` crate or an
-equivalent of our own) is evaluated in the Phase 1 spike and verified at interplanetary ranges
-before we rely on it. See [20 — Tech Stack & Workspace](./20-tech-stack-and-workspace.md#how-bevy-is-used).
+Bevy transforms are single precision. `DECIDED` (from
+[E5](./spikes/E5-coordinate-precision.md)) — **our own camera-relative frame**, not `big_space`
+(pre-release only for Bevy 0.20, and not needed):
+
+- Positions are f64: body-local inside a body, plus the body's system position.
+- Each frame, every render translation is `(position − camera)` **computed in f64, then cast to
+  f32**; the camera renders from the origin. Never cast a system or body-local position to f32
+  and subtract afterwards.
+- Patch vertices are already local to their patch box (see
+  [Patch vertex format](#patch-vertex-format)), so only the patch origin goes through the frame.
+- Measured: ≤ 0.0014 px emulated error from 0 to 10¹⁰ m; ~0.3 ms of main thread per frame to
+  re-place ~1 700 patches.
+- Movement and physics maths must also avoid f32 body-local coordinates on large bodies (0.5 m
+  steps at Earth radius); see E6.
+
+See [20 — Tech Stack & Workspace](./20-tech-stack-and-workspace.md#how-bevy-is-used).
 
 ---
 

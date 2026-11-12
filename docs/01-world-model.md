@@ -128,6 +128,11 @@ Several spaces are in play. Mixing them up is a common source of precision bugs.
 the first chunk loader; retrofitting it is painful. See
 [10 — LOD & Streaming](./10-lod-and-streaming.md).
 
+`MEASURED` ([E5](./spikes/E5-coordinate-precision.md)) — our own **camera-relative frame** passes
+at 10¹⁰ m from the system origin (emulated screen error ≤ 0.0014 px; screenshots identical to the
+origin). Without it, f32 system positions are off by 37 px at 10⁶ m and shred the terrain at
+10¹⁰ m. Scheme details in [10](./10-lod-and-streaming.md#coordinate-precision).
+
 ---
 
 ## Orbital model

@@ -4,30 +4,36 @@ Rules: [work/README.md](README.md). One active goal; everything else is captured
 
 ## Active goal
 
-**E5 — Coordinate precision.** Does a floating origin hold at system-scale distances? Place the
-body 10⁸, 10⁹, and 10¹⁰ m from the system origin; stand, walk, and orbit; measure vertex and
-camera jitter, and physics stability. Definition:
+**E5 — Coordinate precision.** Does a floating origin hold at system-scale distances? Definition:
 [docs/21 E5](../docs/21-phase-1-spike-plan.md#e5--coordinate-precision).
 
-- [ ] Choose the candidates' shape: `big_space` (check its Bevy 0.20 support first) versus our own
-      camera-relative frame (f64 world positions, f32 render transforms rebased each frame)
-- [ ] Carry B-003's lesson: no fixed-direction angles for orientation on a sphere
-- [ ] Physics part depends on E6's engine choice; decide whether E5 tests a minimal resting-body
-      check or waits for E6
-- [ ] Metrics, runs, results in `docs/spikes/E5-coordinate-precision.md`; user visual check
+- [x] Candidates: `big_space` is pre-release only for Bevy 0.20 → our own camera-relative frame,
+      with a naive f32 frame as the control
+- [x] Emulated GPU precision (`precision.rs`): relative ≤ 0.0014 px at 0–10¹⁰ m; naive 37 px at
+      10⁶ m, 34 632 px at 10¹⁰ m
+- [x] In-app runs at 0 / 10⁶ / 10¹⁰ m with screenshots: relative at 10¹⁰ m identical to the origin;
+      naive at 10¹⁰ m shredded (control works)
+- [x] Physics part moved to E6 (plan change in docs/21); flight maths in f32 body-local noted as a
+      large-body risk for E6
+- [x] Results in `docs/spikes/E5-coordinate-precision.md`; write-back to docs/01, 10, 20, 21
+- [ ] **User:** visual jitter check (below)
 
 ## Where we stopped
 
-E4 closed. E5 not started; first step is checking `big_space`'s Bevy 0.20 support and deciding
-how E5 handles physics before E6.
+E5 measured and written up; only the user's visual check remains, then close the goal.
 
 ## Waiting on the user
 
-_Nothing._
+1. **E5 visual check.** From `spikes/`, fly low (Q) and creep along the ground in each:
+   - `cargo run --release -p spike_app -- --system-distance 1e10` (the real frame): should look
+     exactly like the normal app, no shimmer.
+   - `cargo run --release -p spike_app -- --system-distance 1e6 --frame naive` (the control):
+     expected to jitter visibly near the ground. It is supposed to look wrong.
 
 ## Up next
 
-1. **E6 — Collision and physics**, then **E7 — Voxels**.
+1. **E6 — Collision and physics** (now including the resting-body test and large-body local
+   frames), then **E7 — Voxels**.
 2. **E8 — Classification look**, using top-down renders.
 3. **B-001** — decide on the `rng::below` wording or rejection step before anything persistent
    depends on it.
@@ -46,9 +52,6 @@ _Nothing._
   within budget; 16-bit positions sufficient at every level; user found no artefacts.
 - 2026-11-10 — **E3 — LOD and quadtree** (and **E9 — build iteration**). Grid 65 × 65, error metric
   one sample spacing in screen pixels with default SSE 16; skirts against cracks and time-based
-  geomorphing against popping (skirts alone failed the first visual check); four streaming rules
-  in docs/10; static Bevy + `rust-lld` (~6 s incremental builds). Found and fixed B-003 (camera).
-  [Results](../docs/spikes/E3-lod-and-quadtree.md).
+  geomorphing against popping. [Results](../docs/spikes/E3-lod-and-quadtree.md).
 - 2026-11-10 — **Work structure**: `work/`, changelog, research and knowledge base, concept art
-  with LFS. History rewritten to drop 11 MB of build artefacts (force-pushed; backup bundle kept
-  next to the repo). Budget table in docs/21 reviewed and decided.
+  with LFS. Budget table in docs/21 reviewed and decided.

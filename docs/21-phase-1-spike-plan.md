@@ -103,7 +103,8 @@ Run in this order: E1 and E2 need no engine and gate everything else.
 | E3 — LOD and quadtree | **done** | grid 65, SSE 16, skirts + time-based geomorphing, 32-byte vertices (I-005); [results](./spikes/E3-lod-and-quadtree.md) |
 | E9 — Build iteration | **done** | static Bevy + `rust-lld`, ~6 s; [results](./spikes/E3-lod-and-quadtree.md#e9--build-iteration) |
 | E4 — Streaming throughput | **done** | pass at rover speed; full detail while speed / height ≤ ~6 /s; workers never on all cores; [results](./spikes/E4-streaming-throughput.md) |
-| E5–E8 | not started | — |
+| E5 — Coordinate precision | **measured; awaiting user visual check** | own camera-relative frame passes at 10¹⁰ m; physics part moved to E6; [results](./spikes/E5-coordinate-precision.md) |
+| E6–E8 | not started | — |
 
 ### E1 — Field cost
 
@@ -176,8 +177,8 @@ Run in this order: E1 and E2 need no engine and gate everything else.
 | **Question** | Which physics crate accepts our field as terrain collision, at what cost, with no fall-through? |
 | **Candidates** | Avian, Rapier; each with (a) per-patch heightfield colliders built from the field, (b) a custom shape that queries the field directly |
 | **Setup** | 1000 drops of a capsule at 0–300 m/s onto mixed terrain; a character walking and jumping across patch seams and LOD changes; 10 k raycasts per frame |
-| **Metrics** | fall-through count; physics ms per frame; raycast throughput; seam snagging |
-| **Pass** | zero fall-through; physics ≤ 1 ms/frame in the walking test; no snagging at seams |
+| **Metrics** | fall-through count; physics ms per frame; raycast throughput; seam snagging; resting-body drift (moved here from E5) |
+| **Pass** | zero fall-through; physics ≤ 1 ms/frame in the walking test; no snagging at seams; a resting body stays at rest for 10 minutes in the physics local frame, on a small and an Earth-radius body |
 | **Stop rule** | if neither crate accepts a custom field collider cleanly, use (a) and record the cost |
 | **Records into** | [18](./18-collision-and-edits.md#collision-lod), [20](./20-tech-stack-and-workspace.md#how-bevy-is-used) |
 | **Who runs it** | Claude builds and runs the headless tests; the user tries the character feel |

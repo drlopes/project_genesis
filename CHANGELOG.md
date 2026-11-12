@@ -49,6 +49,8 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 - Architecture docs 00–21 (vision through the Phase 1 spike plan).
 
 ### Changed
+- E5 harness in `spikes/app`: camera position kept in f64 body-local coordinates; `--frame
+  relative|naive` and `--system-distance`; `precision.rs` emulates the GPU's f32 vertex path.
 - E4 harness in `spikes/app`: `--path straight` runs (hold, then constant speed and height),
   streaming metrics (pending, deficit, latency, requests/completions, backlog trend, initial fill),
   `E4_HOLE_LOG` diagnostic. Default SSE is now 16 (was 2); the integration loop always integrates
@@ -79,6 +81,10 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
   depth. Commits from the E1 harness onward have new hashes; docs cite both where it matters.
 
 ### Docs
+- E5 results (pending the user's visual check): our own camera-relative frame passes at 10¹⁰ m
+  (emulated error ≤ 0.0014 px); f32 system positions fail from 10⁶ m. `big_space` not adopted
+  (pre-release only for Bevy 0.20). Rule in docs/10: render translations are f64 differences cast
+  to f32. Resting-body physics test moved to E6.
 - E4 results: pass at rover speed with 4 workers; full terrain detail while speed / height above
   ground ≤ ~6 per second (docs/01 travel constraint, docs/10); saturation degrades detail, never
   coverage; generation workers must never take all cores (docs/10, superseding E1's rule); the

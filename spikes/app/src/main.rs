@@ -5,6 +5,7 @@
 //! Scripted run:  cargo run --release -p spike_app -- --script --out e3.json [options]
 //! Options: --radius-km 24  --grid 65  --sse 16  --spacing-scale 1  --workers 4  --seed 1
 //!          --path straight --speed 30 --alt 50 --hold 5 --duration 60 (E4 straight-line runs)
+//!          --system-distance 1e10 --frame relative|naive (E5: body far from the system origin)
 //!          --morph-s 0.5 (geomorph duration; 0 = instant LOD switches)
 //! Debug keys: M morph on/off, G grey geometry, L colour by level, P freeze LOD selection
 
@@ -12,6 +13,8 @@ mod flycam;
 mod material;
 mod metrics;
 mod patch;
+#[cfg_attr(not(test), allow(dead_code))]
+mod precision;
 mod quadtree;
 mod workers;
 
@@ -22,6 +25,7 @@ use material::{
 
 use bevy::asset::RenderAssetUsages;
 use bevy::input::mouse::AccumulatedMouseMotion;
+use bevy::math::DVec3;
 use bevy::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
 use bevy::prelude::*;
 use bevy::window::{PresentMode, PrimaryWindow, WindowResolution};
@@ -63,9 +67,37 @@ struct Config {
     alt: f64,
     hold_s: f64,
     move_s: f64,
+    /// E5: body distance from the system origin, and the naive (f32 system positions) control.
+    system_distance: f64,
+    naive_frame: bool,
 }
 
 impl Config {
+    /// The body centre in system coordinates (E5: `--system-distance` from the system origin).
+    fn body_position(&self) -> DVec3 {
+        DVec3::new(self.system_distance, 0.3 * self.system_distance, 0.0)
+    }
+
+    /// Render translation of something at body-local `local`, seen from a camera at body-local
+    /// `camera`. Relative frame: system positions in f64, differenced, then cast to f32 (the camera
+    /// renders from the origin). Naive frame: system position cast to f32 (Bevy's default use).
+    fn render_translation(&self, local: DVec3, camera: DVec3) -> Vec3 {
+        let body = self.body_position();
+        if self.naive_frame {
+            (body + local).as_vec3()
+        } else {
+            ((body + local) - (body + camera)).as_vec3()
+        }
+    }
+
+    fn camera_translation(&self, camera: DVec3) -> Vec3 {
+        if self.naive_frame {
+            (self.body_position() + camera).as_vec3()
+        } else {
+            Vec3::ZERO
+        }
+    }
+
     /// Total scripted time.
     fn script_len(&self) -> f64 {
         if self.straight {
@@ -108,12 +140,14 @@ impl Config {
             alt: num("--alt", 50.0),
             hold_s: num("--hold", 5.0),
             move_s: num("--duration", 60.0),
+            system_distance: num("--system-distance", 0.0),
+            naive_frame: get("--frame").is_some_and(|f| f == "naive"),
         }
     }
 
     fn json(&self) -> String {
         format!(
-            "{{ \"radius_km\": {}, \"grid\": {}, \"sse_px\": {}, \"spacing_scale\": {}, \"workers\": {}, \"seed\": {}, \"morph_s\": {}, \"path\": \"{}\", \"speed_m_s\": {}, \"alt_m\": {}, \"hold_s\": {}, \"move_s\": {} }}",
+            "{{ \"radius_km\": {}, \"grid\": {}, \"sse_px\": {}, \"spacing_scale\": {}, \"workers\": {}, \"seed\": {}, \"morph_s\": {}, \"path\": \"{}\", \"speed_m_s\": {}, \"alt_m\": {}, \"hold_s\": {}, \"move_s\": {}, \"system_distance_m\": {:e}, \"frame\": \"{}\" }}",
             self.radius_km,
             self.grid,
             self.sse,
@@ -125,7 +159,13 @@ impl Config {
             self.speed,
             self.alt,
             self.hold_s,
-            self.move_s
+            self.move_s,
+            self.system_distance,
+            if self.naive_frame {
+                "naive"
+            } else {
+                "relative"
+            }
         )
     }
 }
@@ -137,6 +177,8 @@ struct Resident {
     /// GPU bytes of vertex + index data, and what E3's float format would have taken.
     bytes: usize,
     float_bytes: usize,
+    /// Patch box origin relative to the body centre (f64; E5).
+    origin: DVec3,
     /// 0 = own shape, 1 = parent's shape.
     morph: f32,
     /// Morph step of the material currently assigned.
@@ -202,6 +244,33 @@ struct Run {
     shots_taken: usize,
 }
 
+/// The camera's true position relative to the body centre, in f64 (E5). Its `Transform` only
+/// carries the render translation for the active frame.
+#[derive(Component)]
+struct BodyLocal(DVec3);
+
+/// Re-place the camera and every patch for this frame. In the relative frame the camera stays at
+/// the origin and patches move; in the naive frame patches stay put at f32 system positions.
+fn apply_frame(
+    config: Res<Config>,
+    terrain: Res<Terrain>,
+    mut cam: Query<(&BodyLocal, &mut Transform), With<FlyCam>>,
+    mut patches: Query<&mut Transform, Without<FlyCam>>,
+) {
+    let Ok((local, mut tf)) = cam.single_mut() else {
+        return;
+    };
+    tf.translation = config.camera_translation(local.0);
+    for r in terrain.resident.values() {
+        if let Ok(mut p) = patches.get_mut(r.entity) {
+            let t = config.render_translation(r.origin, local.0);
+            if p.translation != t {
+                p.translation = t;
+            }
+        }
+    }
+}
+
 #[derive(Component)]
 struct FlyCam {
     /// Frame counter for throttling window-title updates.
@@ -231,7 +300,14 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(
             Update,
-            (debug_keys, drive_camera, stream_terrain, record_frame).chain(),
+            (
+                debug_keys,
+                drive_camera,
+                stream_terrain,
+                apply_frame,
+                record_frame,
+            )
+                .chain(),
         )
         .run();
 }
@@ -300,8 +376,9 @@ fn setup(mut commands: Commands, config: Res<Config>) {
             ..default()
         }),
         // Start looking (almost) straight down at the body; it fills ~30° of view from here.
-        Transform::from_translation(start_pos)
+        Transform::from_translation(config.camera_translation(start_pos.as_dvec3()))
             .with_rotation(flycam::initial(start_pos, -flycam::MAX_PITCH)),
+        BodyLocal(start_pos.as_dvec3()),
         FlyCam { frame: 0 },
     ));
     // Lighting is done in the terrain shader (sun direction in the material), so no light entity.
@@ -409,12 +486,14 @@ fn drive_camera(
     terrain: Res<Terrain>,
     config: Res<Config>,
     mut run: ResMut<Run>,
-    mut cam: Query<(&mut Transform, &mut FlyCam)>,
+    mut cam: Query<(&mut Transform, &mut FlyCam, &mut BodyLocal)>,
     mut window: Query<&mut Window, With<PrimaryWindow>>,
 ) {
-    let Ok((mut tf, mut fly)) = cam.single_mut() else {
+    let Ok((mut tf, mut fly, mut local)) = cam.single_mut() else {
         return;
     };
+    // Flight works in body-local coordinates; `apply_frame` turns them into render transforms.
+    let cur = local.0.as_vec3();
     let now = run.start.elapsed().as_secs_f64();
     if keys.just_pressed(KeyCode::KeyF) && run.script_start.is_none() {
         run.script_start = Some(now);
@@ -426,7 +505,10 @@ fn drive_camera(
         } else {
             script_pose(&terrain.body, ts)
         };
-        *tf = Transform::from_translation(pos).looking_at(target, up);
+        tf.rotation = Transform::from_translation(pos)
+            .looking_at(target, up)
+            .rotation;
+        local.0 = pos.as_dvec3();
         return;
     }
     // Free flight. Altitude, and so speed, is measured from the ground (coarse height or sea
@@ -437,8 +519,8 @@ fn drive_camera(
         let d = p.normalize().as_dvec3();
         body.radius + (body.h0([d.x, d.y, d.z]) as f64).max(body.sea_surface as f64)
     };
-    let up = tf.translation.normalize();
-    let alt = (tf.translation.length() as f64 - ground_radius(tf.translation)) as f32;
+    let up = cur.normalize();
+    let alt = (cur.length() as f64 - ground_radius(cur)) as f32;
     let speed = alt.clamp(2.0, 50_000.0)
         * if keys.pressed(KeyCode::ShiftLeft) {
             5.0
@@ -492,13 +574,13 @@ fn drive_camera(
     if keys.pressed(KeyCode::KeyQ) {
         dir -= up;
     }
-    let mut p = tf.translation + dir.normalize_or_zero() * speed * time.delta_secs();
+    let mut p = cur + dir.normalize_or_zero() * speed * time.delta_secs();
     // Stay at least 2 m above the coarse ground. Finer bands can still rise a little above it.
     let min_r = ground_radius(p) + 2.0;
     if (p.length() as f64) < min_r {
         p = p.normalize() * min_r as f32;
     }
-    tf.translation = p;
+    local.0 = p.as_dvec3();
     tf.rotation = flycam::transport(tf.rotation, up, p.normalize());
 }
 
@@ -510,12 +592,15 @@ fn stream_terrain(
     mut meshes: ResMut<Assets<Mesh>>,
     mut assets: ResMut<Assets<TerrainMaterial>>,
     time: Res<Time>,
-    cam: Query<(&Transform, &Projection), With<Camera3d>>,
+    cam: Query<(&BodyLocal, &Projection), With<Camera3d>>,
+    config: Res<Config>,
     window: Query<&Window, With<PrimaryWindow>>,
     mut vis: Query<&mut Visibility>,
 ) {
     let t = Instant::now();
-    let Ok((tf, proj)) = cam.single() else { return };
+    let Ok((cam_local, proj)) = cam.single() else {
+        return;
+    };
     let Ok(win) = window.single() else { return };
     let fov = match proj {
         Projection::Perspective(p) => p.fov as f64,
@@ -529,11 +614,7 @@ fn stream_terrain(
         terrain.px_per_radian = height as f64 / (2.0 * (fov / 2.0).tan());
     }
     let px_per_radian = terrain.px_per_radian;
-    let cam_pos = [
-        tf.translation.x as f64,
-        tf.translation.y as f64,
-        tf.translation.z as f64,
-    ];
+    let cam_pos = cam_local.0.to_array();
 
     // 1. Select the desired cut and queue what is missing, nearest first.
     let terrain = &mut *terrain;
@@ -629,12 +710,9 @@ fn stream_terrain(
             VertexAttributeValues::Unorm8x4(p.morph_colors),
         );
         mesh.insert_indices(Indices::U16(p.indices));
-        let transform = Transform::from_translation(Vec3::new(
-            p.origin[0] as f32,
-            p.origin[1] as f32,
-            p.origin[2] as f32,
-        ))
-        .with_scale(Vec3::from_array(p.extent));
+        let origin = DVec3::from_array(p.origin);
+        let transform = Transform::from_translation(config.render_translation(origin, cam_local.0))
+            .with_scale(Vec3::from_array(p.extent));
         let material = material_for(
             &mut terrain.materials,
             &mut assets,
@@ -656,6 +734,7 @@ fn stream_terrain(
             triangles: p.triangles,
             bytes,
             float_bytes,
+            origin,
             morph: 0.0,
             step: 0,
             shown: false,
@@ -884,7 +963,7 @@ fn stream_terrain(
             .count() as u32,
         requested,
         completed,
-        altitude: (tf.translation.length() as f64 - terrain.lod.radius) as f32,
+        altitude: (cam_local.0.length() - terrain.lod.radius) as f32,
         disturbed,
         ..default()
     };

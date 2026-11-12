@@ -1,0 +1,19 @@
+{
+  "config": { "radius_km": 24, "grid": 65, "sse_px": 16, "spacing_scale": 1, "workers": 4, "seed": 1, "morph_s": 0.5, "path": "fly-in", "speed_m_s": 30, "alt_m": 50, "hold_s": 5, "move_s": 60, "system_distance_m": 1e10, "frame": "naive" },
+  "duration_s": 90.0,
+  "frames": 40846,
+  "frame_ms": { "p50": 2.03, "p99": 4.13, "p999": 17.05, "max": 49.07 },
+  "terrain_main_ms": { "p50": 0.389, "p99": 1.116, "max": 1.759 },
+  "patch_build_ms": { "p50": 5.69, "p99": 8.67, "count": 5054, "discarded_stale": 0 },
+  "max_displayed_patches": 1611,
+  "max_resident_patches": 1622,
+  "max_triangles": 14031810,
+  "max_queued": 12,
+  "max_terrain_mesh_mb": 317,
+  "max_terrain_mesh_mb_float_format": 751,
+  "frames_with_missing_patches": 0,
+  "disturbed_frames": 362,
+  "valid": false,
+  "ram_mb": 473,
+  "vram": "baseline 1920 MiB, 8188 MiB / end 3533 MiB, 8188 MiB / peak 3757 MiB / peak above baseline 1837 MiB"
+}

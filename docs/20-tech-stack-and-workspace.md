@@ -150,7 +150,7 @@ The Bevy side is a thin layer that drives the generator:
 | Scatter instances | batched instance buffers per patch, not one entity per pebble |
 | The ocean shell, atmosphere | custom materials / shaders |
 | Content packs | Bevy assets with hot-reload; on reload, re-resolve content and rebake in the inspector |
-| Floating origin | a camera-relative render frame; `big_space` or an equivalent is evaluated in the spike |
+| Floating origin | our own camera-relative render frame (f64 positions, f32 render translations from f64 differences); `big_space` not used ([E5](./spikes/E5-coordinate-precision.md)) |
 
 Physics: collision against terrain uses **our** collision field ([18](./18-collision-and-edits.md)).
 A Bevy physics crate (Avian or Rapier) may handle rigid bodies and character movement. The choice is
