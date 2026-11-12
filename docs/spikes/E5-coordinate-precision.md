@@ -73,7 +73,9 @@ within the 2 ms budget.
 ## Decisions
 
 1. **Pass at 10¹⁰ m with our own camera-relative frame**: emulated error ≤ 0.0014 px at every
-   distance; screenshots at 10¹⁰ m identical to the origin. Visual check by the user: PENDING.
+   distance; screenshots at 10¹⁰ m identical to the origin. **User check (2026-11-12): the
+   relative frame at 10¹⁰ m looks right near the ground; the naive control at 10⁶ m jitters
+   visibly**, as predicted.
 2. **No `big_space`.** Our frame passes and is small; adopting a pre-release dependency for it is
    not justified. Revisit only if we need what it adds (hierarchical grids for nested reference
    frames).

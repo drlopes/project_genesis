@@ -103,7 +103,7 @@ Run in this order: E1 and E2 need no engine and gate everything else.
 | E3 — LOD and quadtree | **done** | grid 65, SSE 16, skirts + time-based geomorphing, 32-byte vertices (I-005); [results](./spikes/E3-lod-and-quadtree.md) |
 | E9 — Build iteration | **done** | static Bevy + `rust-lld`, ~6 s; [results](./spikes/E3-lod-and-quadtree.md#e9--build-iteration) |
 | E4 — Streaming throughput | **done** | pass at rover speed; full detail while speed / height ≤ ~6 /s; workers never on all cores; [results](./spikes/E4-streaming-throughput.md) |
-| E5 — Coordinate precision | **measured; awaiting user visual check** | own camera-relative frame passes at 10¹⁰ m; physics part moved to E6; [results](./spikes/E5-coordinate-precision.md) |
+| E5 — Coordinate precision | **done** | own camera-relative frame passes at 10¹⁰ m; physics part moved to E6; [results](./spikes/E5-coordinate-precision.md) |
 | E6–E8 | not started | — |
 
 ### E1 — Field cost

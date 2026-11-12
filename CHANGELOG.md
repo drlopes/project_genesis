@@ -81,7 +81,7 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
   depth. Commits from the E1 harness onward have new hashes; docs cite both where it matters.
 
 ### Docs
-- E5 results (pending the user's visual check): our own camera-relative frame passes at 10¹⁰ m
+- E5 done (user check: relative frame clean at 10¹⁰ m, naive control jitters at 10⁶ m): our own camera-relative frame passes at 10¹⁰ m
   (emulated error ≤ 0.0014 px); f32 system positions fail from 10⁶ m. `big_space` not adopted
   (pre-release only for Bevy 0.20). Rule in docs/10: render translations are f64 differences cast
   to f32. Resting-body physics test moved to E6.
