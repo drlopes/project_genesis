@@ -9,14 +9,10 @@
 //!          --morph-s 0.5 (geomorph duration; 0 = instant LOD switches)
 //! Debug keys: M morph on/off, G grey geometry, L colour by level, P freeze LOD selection
 
-mod flycam;
 mod material;
 mod metrics;
-mod patch;
-#[cfg_attr(not(test), allow(dead_code))]
-mod precision;
-mod quadtree;
-mod workers;
+
+use spike_app::{flycam, quadtree, workers};
 
 use material::{
     ATTRIBUTE_QCOLOR, ATTRIBUTE_QMORPH_COLOR, ATTRIBUTE_QMORPH_POSITION, ATTRIBUTE_QNORMALS,

@@ -8,20 +8,23 @@ Rules: [work/README.md](README.md). One active goal; everything else is captured
 what cost, with no fall-through? Definition:
 [docs/21 E6](../docs/21-phase-1-spike-plan.md#e6--collision-and-physics).
 
-- [ ] Candidates on Bevy 0.20: `avian3d` 0.8 (has `f64`) and `bevy_rapier3d` 0.37 (f32 only);
-      each with (a) per-patch heightfield colliders from the field, (b) a custom shape querying the
-      field directly
-- [ ] Headless tests: 1 000 capsule drops at 0–300 m/s on mixed terrain (fall-through count),
-      10 k raycasts per frame, physics ms per frame
-- [ ] Physics local frame (from E5): origin near the player, rebased as it moves; resting body
-      for 10 minutes on a 24 km body and an Earth-radius body
-- [ ] Character walking and jumping across patch seams and LOD changes; **user** tries the feel
-- [ ] Results in `docs/spikes/E6-collision-and-physics.md`; write-back to docs/18 and docs/20
+- [x] Candidates: neither crate accepts a custom field collider cleanly (Avian's `AnyCollider`
+      replaces the whole collider type; bevy_rapier exposes no contact dispatcher) → option (a),
+      per-patch triangle meshes from the visual vertices
+- [x] `spikes/physics` headless harness; `spike_app` split into lib + bin
+- [x] Avian: drops (0 fall-through terrain-only in 12 000; 6/1 000 from body–body impacts),
+      rays (5 ms/10 k vs 500 ms for the field trace; agreement 1.2 cm p99), rest (0 mm sleeping;
+      never-sleeping bodies creep on slopes, a solver property; local frame fine at Earth radius,
+      naive fails)
+- [ ] Rapier: the same three tests
+- [ ] Character walking and jumping across patch seams and LOD changes (Avian `MoveAndSlide`);
+      physics ms/frame (pass ≤ 1 ms); **user** tries the feel
+- [ ] Decisions; write-back to docs/18 (incl. B-004) and docs/20
 
 ## Where we stopped
 
-E5 closed. E6 not started; first step is checking both crates' APIs for custom shapes and
-heightfields on Bevy 0.20.
+Avian measured; interim results in `docs/spikes/E6-collision-and-physics.md`. Next: Rapier with
+the same tests (one cargo feature), then the character in the app.
 
 ## Waiting on the user
 

@@ -13,6 +13,10 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
   culling boxes cover both morph shapes.
 
 ### Added
+- `spikes/physics` (E6): headless Avian 0.8 tests for capsule drops, raycasts (engine versus our
+  field sphere trace), and resting bodies, with per-site local physics frames and a naive control.
+  `spike_app` is now a library plus the app binary, so the physics tests reuse the patch builder.
+- B-004 logged (docs/18 sphere-trace formula).
 - E3 geomorphing in `spikes/app`: custom terrain material and WESL shader; each vertex carries its
   parent level's position, normal, and colour, and patches morph over 0.5 s on split and merge
   (`--morph-s`). Debug keys M/G/L/P, `--shots` screenshots during the scripted fly-in. Fixed: patches

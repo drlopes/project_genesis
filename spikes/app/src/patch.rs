@@ -54,11 +54,27 @@ impl PatchMesh {
         self.positions.len() * FLOAT_VERTEX_BYTES + self.indices.len() * 4
     }
 
-    /// World position of an encoded position, decoded as the GPU does (f32 box).
-    #[cfg_attr(not(test), allow(dead_code))]
+    /// Body-local position of an encoded vertex, in f64. The origin stays f64: since E5, render
+    /// translations are f64 differences, and collision (E6) needs exact positions on large bodies.
     pub fn world(&self, q: [u16; 4]) -> [f64; 3] {
-        let o = self.origin.map(|v| v as f32 as f64);
-        [0, 1, 2].map(|k| o[k] + q[k] as f64 / 65535.0 * self.extent[k] as f64)
+        [0, 1, 2].map(|k| self.origin[k] + q[k] as f64 / 65535.0 * self.extent[k] as f64)
+    }
+
+    /// Body-local positions of the grid vertices (own shape, skirts excluded) and the grid
+    /// triangles, for collision. `intervals` is the patch grid size minus one.
+    pub fn collision_grid(&self, intervals: usize) -> (Vec<[f64; 3]>, Vec<[u32; 3]>) {
+        let w = intervals + 1;
+        let verts = self.positions[..w * w]
+            .iter()
+            .map(|q| self.world(*q))
+            .collect();
+        let tris = self.indices[..intervals * intervals * 6]
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|t| [t[0] as u32, t[1] as u32, t[2] as u32])
+            .collect();
+        (verts, tris)
     }
 }
 
