@@ -31,6 +31,10 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 - E6 closed: the user's feel check passed ("works flawlessly; no glaring issues").
 
 ### Fixed
+- B-001: `genesis_core::rng::below` is now exactly unbiased: Lemire's rejection step, with the
+  redraw keyed from the rejected value and the attempt number so it stays a pure function of its
+  key. Outputs change only for keys that hit the rejection (probability below `n / 2^64`); new
+  tests pin ordinary values, exercise the rejection path, and show the bias without it.
 - B-005: the spike field's crater term had a vertical wall at every rim (the raised rim started at
   `0.2 · depth` where the bowl ended at 0, up to 60 m). The rim profile is now continuous. Found in
   E7 as a 12 m "seam outlier". The E2 reference sample hash is re-pinned deliberately for it

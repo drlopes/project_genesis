@@ -35,7 +35,9 @@ Turning a 64-bit value into numbers:
 - Integer in `[0, n)`: the multiply-shift `(x · n) >> 64` is fast, with bias at most `n / 2^64`;
   an extra rejection step makes it exact
   ([lemire](../../research/sources/lemire-2019-fast-random-integer-in-interval.md)). Plain
-  `x % n` is both slower and more biased.
+  `x % n` is both slower and more biased. `genesis_core::rng::below` uses the rejection step; with
+  a counter-based RNG the redraw needs a defined key (it derives one from the rejected value and
+  the attempt number).
 
 ## Gradient noise
 

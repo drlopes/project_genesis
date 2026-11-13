@@ -35,4 +35,7 @@ division cost of `x % n`.
 - Multiply-shift without rejection: fast, bias ≤ `n / 2^64`, fine for procedural content.
 - With rejection: exactly uniform, still fast. With a counter-based RNG, "draw again" means using a
   second key, which must be part of the defined behaviour.
-- Our `below` implements the first, but its comment claims the second (B-001).
+- Our `below` implements the second since 2026-11-13 (B-001, fixed): a rejected value is redrawn
+  from `Seed(rejected).derive_idx("below_retry", attempt)`, so the result stays a pure function of
+  `(seed, purpose, index)`. Before that it implemented the first while its comment claimed the
+  second.
