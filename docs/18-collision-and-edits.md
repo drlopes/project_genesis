@@ -121,6 +121,11 @@ constrained:
 | No solid surface | none | nothing to collide with |
 
 - `interactionRadius` and `collisionRadius` are per-body tuning values, not constants.
+- `DECIDED` from [E6](./spikes/E6-collision-and-physics.md): a **walking character** uses
+  `interactionRadius = 40 m` (collision patches at the visual LOD, built at most 4 per frame,
+  add-before-remove); E6 had no outer ring, so `collisionRadius = interactionRadius` for a
+  character. `OPEN` — vehicles: the radius must cover the distance travelled while patches are
+  built (at 100 m/s, 40 m is 0.4 s), so it scales with speed; set with vehicle design (I-015).
 - Collision tolerance is `tol = max(0.02 m, 0.5 · sampleSpacing(lod))`.
 - A collision patch is never generated **finer** than the visual patch it belongs to: that would
   cost more than the frame can show.

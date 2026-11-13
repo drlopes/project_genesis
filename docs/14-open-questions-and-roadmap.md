@@ -181,7 +181,8 @@ Build in this order. Each step de-risks the next.
 - Implement `rocky` macro geology (plates + craters) at low resolution.
 - Solve sea level from hypsometry; render an ocean shell.
 - Run the Phase 1 spike, experiments E1–E9, and record the numbers, including Q2
-  ([21](./21-phase-1-spike-plan.md)).
+  ([21](./21-phase-1-spike-plan.md)). **Done 2026-11-13**: all nine experiments recorded and
+  written back.
 - Implement the cube-sphere quadtree with the five LOD bands
   ([10](./10-lod-and-streaming.md#lod-levels-and-budgets)).
 - Implement collision from the same field.

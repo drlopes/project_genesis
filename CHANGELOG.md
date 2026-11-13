@@ -7,6 +7,13 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 ## [Unreleased]
 
 ### Changed
+- **Classification look defaults decided (E8)**: *k* 4 and jitter 1× confirmed; mosaic strength
+  **0.35 → 0.9**. docs/19 now records the mosaic noise's measured range (one field sd 0.27, a
+  two-field difference sd 0.38) and the rule that sizes mosaic strength against the palette
+  spread; the worked example is recomputed. The palette draw's spread is `PROPOSED`.
+- **Phase 1 spike complete**: docs/21 exit criteria met; budget table filled (edit → remesh
+  23–31 ms, voxel RAM, L0–L2 at palette 8); docs/18 records E6's `interactionRadius` of 40 m for a
+  walking character (vehicle radii `OPEN`).
 - **Voxel numbers decided (Q2 → D44)**, from E7: 0.5 m voxels (the coarsest that passed the
   user's look test from 2 m), a ±64 m region, surface nets in 32³ bricks, volume edits persisted as
   records and replayed. docs/18 gains the chunk ownership and winding rules, on-demand bricks,
@@ -38,6 +45,10 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
   culling boxes cover both morph shapes.
 
 ### Added
+- `spikes/field` `e8` binary (E8): top-down biome maps (separated and `--overlap` content), border
+  width, patch sizes, mosaic noise statistics, and L2 cost per setting. `Body::jitter` scales the
+  jitter amplitudes (exactly 1.0 by default; E2 hash unchanged) and
+  `Content::set_mosaic_strength` sets the mosaic.
 - `spikes/voxel` (E7): voxel regions in 32³ bricks around a site, surface nets and a blocky
   baseline, sphere/cylinder edits with on-demand bricks, an edit-record log with bit-exact replay,
   and metrics for RAM, remesh latency, seam against the heightfield (including holes), record

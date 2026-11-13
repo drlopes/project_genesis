@@ -7,3 +7,5 @@ description = "E1: a synthetic body with a cost-faithful L0–L4 field stack and
 
 [dependencies]
 genesis_core = { path = "../../crates/genesis_core" }
+# E8 map renders only.
+png = "0.18"

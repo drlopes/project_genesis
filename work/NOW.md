@@ -4,23 +4,19 @@ Rules: [work/README.md](README.md). One active goal; everything else is captured
 
 ## Active goal
 
-**E8 — Classification cost and look.** Are the docs/19 defaults cheap enough and good-looking
-enough? Definition: [docs/21 E8](../docs/21-phase-1-spike-plan.md#e8--classification-cost-and-look).
-
-- [ ] Top-down biome-map renders from the macro grid, stub content pack (8 aerial biomes,
-      1 ecotone, 1 variant)
-- [ ] Sharpness *k* 2 / 4 / 6; mosaic strength 0.2 / 0.35 / 0.6; jitter 0.5× / 1× / 2×
-- [ ] Metrics: L2 cost (from E1), border width, patch size distribution
-- [ ] The user picks a default set (one round; further tuning is Phase 2)
+_None._ The Phase 1 spike is complete; the next goal is the user's choice (below).
 
 ## Where we stopped
 
-E7 closed: 0.5 m voxels passed the user's look test; ±64 m region, surface nets, edits as
-records. E8 is the last Phase 1 experiment.
+E8 closed: the user picked *k* 4, mosaic 0.9, jitter 1×. All nine experiments are recorded and
+written back; docs/21's exit criteria are met. The rest of Phase 1 (docs/14 roadmap) is production
+code: macro geology, sea level, the quadtree, collision, and flying from orbit to the ground.
 
 ## Waiting on the user
 
-_Nothing._
+- **The next goal.** Recommended: B-001 first (it must be settled before production code depends
+  on `rng::below`), then start Phase 1 production with `genesis_gen`: the field stack ported from
+  the spike under the decided numbers.
 
 ## Up next
 
@@ -31,6 +27,10 @@ _Nothing._
 
 ## Done recently
 
+- 2026-11-13 — **E8 — Classification cost and look.** *k* 4, mosaic **0.9** (was 0.35: the
+  weaker of two equally suitable families never formed patches, because the mosaic noise spans
+  ~1/3 of its nominal range and palette weights differ by ~1.5×), jitter 1×; L0–L2 ~0.9 µs.
+  [Results](../docs/spikes/E8-classification-look.md). **Phase 1 spike complete.**
 - 2026-11-13 — **E7 — Voxels and edits.** 0.5 m voxels (coarsest passing the user's look test;
   1 m reads as broken), ±64 m region, surface nets in 32³ bricks: 17 MB, seam max 20 mm, a dig
   remeshes in 23–31 ms. Edits as 66-byte records; replay bit-identical. Found and fixed B-005 (crater

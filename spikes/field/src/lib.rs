@@ -38,6 +38,9 @@ pub struct Body {
     pub craters: Vec<Crater>,
     pub suites: Vec<Suite>,
     pub content: Content,
+    /// Scale on the docs/19 jitter amplitudes (E8). Exactly 1.0 by default, so generation is
+    /// bit-identical to the unscaled field.
+    pub jitter: f32,
     geology: Seed,
     climate: Seed,
     material: Seed,
@@ -183,6 +186,7 @@ impl Body {
             craters,
             suites,
             content: Content::stub(seed, palette, k, budget),
+            jitter: 1.0,
             geology,
             climate: seed.derive("climate"),
             material: seed.derive("material"),
@@ -274,10 +278,10 @@ impl Body {
         // Value jitter (docs/19 step 2): four noise evaluations.
         let j = |tag: &str| gradient3(self.climate.derive(tag), scale(p, 2000.0));
         let mut axes = Axes {
-            temp: temp + 2.0 * j("jitter_temp"),
-            moisture: moisture + 0.05 * j("jitter_moisture"),
-            altitude: altitude + 60.0 * j("jitter_altitude"),
-            slope: slope + 2.0 * j("jitter_slope"),
+            temp: temp + 2.0 * self.jitter * j("jitter_temp"),
+            moisture: moisture + 0.05 * self.jitter * j("jitter_moisture"),
+            altitude: altitude + 60.0 * self.jitter * j("jitter_altitude"),
+            slope: slope + 2.0 * self.jitter * j("jitter_slope"),
             substrate: [0.0; 3],
         };
         // Soft substrate from a material region field plus the slope rule.

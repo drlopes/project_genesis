@@ -246,6 +246,19 @@ suitable, their noise fields decide which one dominates locally, giving groves, 
 clearings instead of a uniform mix. Because the power normalisation in step 9 raises `v` to the
 `k`-th power, the effective contrast is `strength · k`; tune them together.
 
+**Sizing the strength** (measured in [E8](./spikes/E8-classification-look.md)). The noise does not
+fill `[−1, 1]`: one field has sd ≈ 0.27 (p99 0.59), and the difference of two families' fields,
+which is what decides between them, has sd ≈ 0.38 (p99 0.89). Where two families are equally
+suitable, the one with the lower palette weight dominates wherever
+
+```text
+strength · (n_weak − n_strong) > ln(paletteWeight_strong / paletteWeight_weak)
+```
+
+So the strength must be sized against the palette spread, or a family that survives the palette
+draw can be invisible next to a stronger partner. At the default 0.9, a 1.5× palette ratio leaves
+the weaker family ~10–20 % of the shared area as patches; at 0.35 it left 0 %.
+
 `DECIDED` — the per-family mosaic prior is the mechanism for within-climate patchiness.
 
 ---
@@ -443,7 +456,7 @@ zero-score biomes.
 | *k* (sharpness) | `4` | power normalisation exponent; integer |
 | *K* | `4` | families per stratum after the soft budget |
 | *ε* | `1e-3` | fallback floor |
-| *mosaic_strength* | `0.35` | default `mosaic.strength` |
+| *mosaic_strength* | `0.9` | default `mosaic.strength` (E8; was 0.35) |
 | mosaic scale | `1500 m` | default `mosaic.scale` |
 | *S_jitter* | `2000 m` | jitter wavelength |
 | *A_temp* / *A_moisture* / *A_altitude* / *A_slope* | `2 K` / `0.05` / `60 m` / `2°` | jitter amplitudes |
@@ -456,7 +469,14 @@ All of these are data, in the classification preset of the core pack, not code c
 
 [E1](./spikes/E1-field-cost.md) measured the classifier at ~265 ns per sample with a palette of 16,
 and found a mean of 2.7 active families per sample (maximum 5). *K* = 4 rarely binds, so it stays.
-The look-related defaults (*k*, mosaic, jitter) are chosen in E8.
+[E8](./spikes/E8-classification-look.md) chose the look-related defaults with the user from
+top-down maps: *k* `4` (borders ~430 m wide in the stub content; *k* changes border softness only,
+never which family dominates), *mosaic_strength* `0.9`, jitter amplitudes as listed. L0–L2 costs
+~0.9 µs at palette 8; none of these settings changes the cost by more than 5 %.
+
+`PROPOSED` — the spread of the lognormal palette draw: keep typical partner ratios ≤ ~1.6, so a
+family that passes *palette_drop* still shows next to a stronger competitor (see
+[the sizing rule](#6-the-prior-and-the-mosaic)).
 
 ---
 
@@ -504,8 +524,8 @@ A temperate aerial sample. After jitter: `temp = 283 K`, `moisture = 0.58`,
 
 | Family | Limiting axis | `S` | `paletteWeight` | mosaic | `v` |
 |---|---|---|---|---|---|
-| `temperate_forest` | substrate (`soil`/`sand` → 0.8) | `0.80` | `0.42` | `exp(0.35·0.2) = 1.073` | `0.361` |
-| `temperate_grassland` | substrate (0.8) | `0.80` | `0.28` | `exp(0.35·−0.5) = 0.840` | `0.188` |
+| `temperate_forest` | substrate (`soil`/`sand` → 0.8) | `0.80` | `0.42` | `exp(0.9·0.2) = 1.197` | `0.402` |
+| `temperate_grassland` | substrate (0.8) | `0.80` | `0.28` | `exp(0.9·−0.5) = 0.638` | `0.143` |
 | `boreal_forest` | temp (`[250, 280]`, falloff 6; 3 K out → 0.5) × substrate 0.8 | `0.40` | `0.18` | `1.0` | `0.072` |
 | `barren` (fallback) | — | — | — | — | `0.001` |
 
@@ -516,22 +536,22 @@ Four values and `K = 4`, so the soft budget does nothing. Power normalisation wi
 
 | Family | `v⁴` | weight |
 |---|---|---|
-| `temperate_forest` | `0.01691` | `0.930` |
-| `temperate_grassland` | `0.00125` | `0.069` |
-| `boreal_forest` | `0.0000269` | `0.0015` |
+| `temperate_forest` | `0.02618` | `0.983` |
+| `temperate_grassland` | `0.000416` | `0.016` |
+| `boreal_forest` | `0.0000269` | `0.0010` |
 | `barren` | `1e-12` | `≈ 0` |
 
-With `k = 2` the same inputs give `0.762 / 0.207 / 0.030`: a wider, softer border.
+With `k = 2` the same inputs give `0.863 / 0.109 / 0.028`: a wider, softer border.
 
 Ecotone `forest_edge` (`strength = 0.6`):
-`e = 0.6 · 4 · 0.930 · 0.069 = 0.154`. After renormalising by `1.154`, the families are
-`temperate_forest 0.806`, `forest_edge 0.133`, `temperate_grassland 0.060`,
-`boreal_forest 0.0013`.
+`e = 0.6 · 4 · 0.983 · 0.016 = 0.037`. After renormalising by `1.037`, the families are
+`temperate_forest 0.948`, `forest_edge 0.036`, `temperate_grassland 0.015`,
+`boreal_forest 0.0010`.
 
 Stage 2: in the forest family, the base entry scores `0.80` and the alpine variant `0`, so all
-`0.806` goes to the base entry. The dominant biome is `temperate_forest`.
+`0.948` goes to the base entry. The dominant biome is `temperate_forest`.
 
-The sample sits just inside a forest near a meadow. Moving towards the grassland's mosaic peak, the
+The sample sits inside a forest grove, near a meadow. Moving towards the grassland's mosaic peak, the
 weights cross smoothly through a band of `forest_edge` scatter into grassland, with no seam and no
 step.
 

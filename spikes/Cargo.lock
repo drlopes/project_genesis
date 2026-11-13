@@ -5630,6 +5630,7 @@ name = "spike_field"
 version = "0.0.0"
 dependencies = [
  "genesis_core",
+ "png",
 ]
 
 [[package]]

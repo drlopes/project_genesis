@@ -26,6 +26,12 @@ anything about the galaxy beyond one system.
 4. the [budget table](#reference-hardware-and-budgets) is filled with measured values;
 5. every number in the [write-back table](#write-back) is updated in its owning doc.
 
+**Status (2026-11-13): exit criteria met.** All nine experiments have results and decisions; Q2 is
+closed (D44); Avian and our own camera-relative frame are chosen; the budget table is filled
+except the launch half of the two build-iteration rows (build time measured, launch not); the
+write-back table is applied, with vehicle collision radii left `OPEN` in docs/18 for vehicle
+design.
+
 Each experiment has a **stop rule**. If it is hit, record the failure and the best value found,
 and move on; a spike that never ends is a design meeting in disguise.
 
@@ -57,12 +63,12 @@ Worker work is a **throughput** target (E4). Per-frame budgets apply only to the
 | Worker generation throughput | enough for the LOD-4 ring at rover speed, 4 workers (E4) | **pass**: in-app ~620 patches/s at 4 workers; rover (30 m/s at 50 m) needs ~57/s, latency p99 12 ms ([E4](./spikes/E4-streaming-throughput.md)); field only: 774/s ([E1](./spikes/E1-field-cost.md)) |
 | Terrain + scatter VRAM | ≤ 2 GB | terrain only, SSE 16 with geomorphing and the compact vertex format (I-005): mesh data 331 MB; peak VRAM above baseline incl. Bevy 1.34–1.39 GB ([E3](./spikes/E3-lod-and-quadtree.md#follow-up-compressed-vertex-format-i-005)) |
 | Total VRAM at 1440p | ≤ 6 GB (headroom on an 8 GB card) | peak ≤ 2.8 GB for the app in every run ([E3](./spikes/E3-lod-and-quadtree.md#peak-vram)) |
-| Terrain + scatter + voxel RAM per resident body | ≤ 1.5 GB | terrain only: ~0.43 GB for the whole process ([E3](./spikes/E3-lod-and-quadtree.md)) |
+| Terrain + scatter + voxel RAM per resident body | ≤ 1.5 GB | terrain only: ~0.43 GB for the whole process ([E3](./spikes/E3-lod-and-quadtree.md)); voxels at most 17 MB samples + 3 MB mesh per fully edited ±64 m region, and only where edited ([E7](./spikes/E7-voxels-and-edits.md)) |
 | Total process RAM | ≤ 6 GB (fits a 16 GB machine) | ~0.43 GB, terrain-only spike ([E3](./spikes/E3-lod-and-quadtree.md)) |
 | Full L0–L4 sample, single thread | ≤ 4 µs | 1.18 µs ([E1](./spikes/E1-field-cost.md)) |
-| L0–L2 sample, single thread | ≤ 1 µs | 1.05 µs ([E1](./spikes/E1-field-cost.md)) |
+| L0–L2 sample, single thread | ≤ 1 µs | 1.05 µs at palette 16 ([E1](./spikes/E1-field-cost.md)); 0.89–0.92 µs at palette 8 for every *k* / mosaic / jitter setting ([E8](./spikes/E8-classification-look.md)) |
 | Body bake (core + caches) | ≤ 2 s on worker threads | 62 ms, 1 thread, pyramid + caches ([E1](./spikes/E1-field-cost.md)) |
-| Edit → remesh visible | ≤ 50 ms | — |
+| Edit → remesh visible | ≤ 50 ms | 0.5 m voxels: a dig remeshes 8–12 chunks in 23–31 ms, 1 thread; a chunk's first edit adds ~33 ms per brick to voxelise it ([E7](./spikes/E7-voxels-and-edits.md)) |
 | Incremental build + launch after a one-line change in `genesis_gen` | ≤ 15 s | build 6.0–6.3 s with `rust-lld`, field crate as stand-in; launch not measured ([E9](./spikes/E3-lod-and-quadtree.md#e9--build-iteration)) |
 | Incremental build + launch after a one-line change in the Bevy app crate | ≤ 20 s | build 6.0–6.3 s with `rust-lld`; launch not measured ([E9](./spikes/E3-lod-and-quadtree.md#e9--build-iteration)) |
 
@@ -106,7 +112,7 @@ Run in this order: E1 and E2 need no engine and gate everything else.
 | E5 — Coordinate precision | **done** | own camera-relative frame passes at 10¹⁰ m; physics part moved to E6; [results](./spikes/E5-coordinate-precision.md) |
 | E6 — Collision and physics | **done** | Avian 0.8; per-patch trimesh colliders from displayed patches; character passes (0 fall-through, 0 snags, ~0.5 ms p99), user felt it flawless; [results](./spikes/E6-collision-and-physics.md) |
 | E7 — Voxels and edits | **done** | 0.5 m voxels (user's look test), ±64 m region, surface nets; seam max 20 mm, remesh 23–31 ms, 17 MB per region; edits as 66-byte records, replay bit-identical; [results](./spikes/E7-voxels-and-edits.md) |
-| E8 | not started | — |
+| E8 — Classification cost and look | **done** | user picked *k* 4, mosaic **0.9** (was 0.35: the weaker of two co-suitable families never formed patches), jitter 1×; L0–L2 ~0.9 µs; [results](./spikes/E8-classification-look.md) |
 
 ### E1 — Field cost
 

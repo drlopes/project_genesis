@@ -217,6 +217,15 @@ impl Content {
         }
     }
 
+    /// Set the mosaic strength of every family that has one (the fallback keeps none).
+    pub fn set_mosaic_strength(&mut self, strength: f32) {
+        for f in &mut self.families {
+            if f.mosaic_strength > 0.0 {
+                f.mosaic_strength = strength;
+            }
+        }
+    }
+
     pub fn classify(&self, p: [f64; 3], x: &Axes, out: &mut Weights) {
         let n = self.families.len();
         let mut v = [0.0f32; MAXF];
