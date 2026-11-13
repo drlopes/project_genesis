@@ -16,15 +16,16 @@ what cost, with no fall-through? Definition:
       rays (5 ms/10 k vs 500 ms for the field trace; agreement 1.2 cm p99), rest (0 mm sleeping;
       never-sleeping bodies creep on slopes, a solver property; local frame fine at Earth radius,
       naive fails)
-- [ ] Rapier: the same three tests
+- [x] Rapier: the same three tests (0 fall-through everywhere incl. without CCD, verified by a
+      no-terrain control; faster step tail; but bodies creep on mesh contacts before sleeping)
 - [ ] Character walking and jumping across patch seams and LOD changes (Avian `MoveAndSlide`);
       physics ms/frame (pass ≤ 1 ms); **user** tries the feel
 - [ ] Decisions; write-back to docs/18 (incl. B-004) and docs/20
 
 ## Where we stopped
 
-Avian measured; interim results in `docs/spikes/E6-collision-and-physics.md`. Next: Rapier with
-the same tests (one cargo feature), then the character in the app.
+Both engines measured headless; comparison in `docs/spikes/E6-collision-and-physics.md`. Next:
+the character test (walk and jump across seams and LOD changes), which decides the engine.
 
 ## Waiting on the user
 

@@ -10,6 +10,9 @@ use bevy::time::TimeUpdateStrategy;
 use std::time::{Duration, Instant};
 
 const HZ: f64 = 60.0;
+/// Settling time before a rest measurement starts (3 s was too short: boxes still tipped into
+/// place afterwards).
+const SETTLE_S: f64 = 10.0;
 const G: f32 = 9.81;
 const SPEED_BUCKETS: usize = 6; // 0–50, 50–100, …, 250–300 m/s
 
@@ -431,7 +434,7 @@ pub fn rest(world: &World, a: &Args) -> String {
         };
         let awake = spawn_box(&mut app, -3.0, false);
         let sleeper = spawn_box(&mut app, 3.0, true);
-        for _ in 0..(3.0 * HZ) as usize {
+        for _ in 0..(SETTLE_S * HZ) as usize {
             step(&mut app);
         }
         let body_pos = |app: &App, e: Entity| position(app, e).map(|p| site.phys_to_body(p));

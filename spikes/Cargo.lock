@@ -5130,6 +5130,7 @@ dependencies = [
  "num-traits",
  "parry3d",
  "profiling",
+ "rayon",
  "serde",
  "simba",
  "static_assertions",

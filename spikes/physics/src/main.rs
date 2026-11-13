@@ -16,6 +16,10 @@ mod site;
 mod avian_engine;
 #[cfg(feature = "avian")]
 use avian_engine as engine;
+#[cfg(all(feature = "rapier", not(feature = "avian")))]
+mod rapier_engine;
+#[cfg(all(feature = "rapier", not(feature = "avian")))]
+use rapier_engine as engine;
 
 use bevy::math::DVec3;
 use site::{Frame, Site, World};

@@ -36,11 +36,15 @@ Instructions for anyone, human or AI agent, making changes here. The full proces
 5. **Clean up.** Rust accumulates build data quickly:
    ```sh
    powershell -ExecutionPolicy Bypass -File tools/clean.ps1        # prune incremental caches
-   powershell -ExecutionPolicy Bypass -File tools/clean.ps1 -All   # full cargo clean, when target/ is large
+   powershell -ExecutionPolicy Bypass -File tools/clean.ps1 -All   # full cargo clean
    ```
    Delete any scratch directories or probe files you created (in `%TEMP%` or the repo).
-   With Bevy, `target/` grows past 10 GB after builds in several profiles or a linker change; the
-   script warns above 5 GB, and then `-All` is the right call.
+   **Never run `-All` when it only forces a rebuild of what is in use** (user rule, 2026-11-12):
+   a full clean of current artefacts costs ~10 minutes of rebuilding and saves nothing lasting.
+   Use `-All` only when `target/` holds genuinely stale artefacts: after a linker or toolchain
+   change, after dropping a dependency or a build profile we no longer use, or at the end of a
+   piece of work whose dependencies (e.g. a spike-only engine) will not be built again soon. The
+   script's size warning is a prompt to check which case applies, not an instruction.
 6. **Commit and push**, with IDs in the message where relevant. Check `git status` first: never
    commit build output or local-only material.
 

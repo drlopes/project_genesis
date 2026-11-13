@@ -57,6 +57,6 @@ Write-Host "After:  target/ = $(Size $target)"
 if (-not $All -and (Test-Path $target)) {
     $gb = ((Get-ChildItem -Recurse -File -Force $target -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum) / 1GB
     if ($gb -gt 5) {
-        Write-Host ("target/ is still {0:N1} GB: mostly stale artefacts. Run with -All for a full clean (the next build recompiles everything)." -f $gb)
+        Write-Host ("target/ is {0:N1} GB. If it holds stale artefacts (old linker, toolchain, dropped dependency or profile), run with -All. If it is the current build in use, leave it: -All would only force a full rebuild (see AGENTS.md)." -f $gb)
     }
 }

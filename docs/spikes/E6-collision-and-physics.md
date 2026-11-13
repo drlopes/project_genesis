@@ -1,7 +1,7 @@
 # E6 — Collision and physics
 
 Experiment definition: [21 — Phase 1 Spike Plan](../21-phase-1-spike-plan.md#e6--collision-and-physics).
-Status: **in progress.** Avian measured; Rapier and the walking character not yet.
+Status: **in progress.** Avian and Rapier measured headless; the walking character not yet.
 
 | | |
 |---|---|
@@ -78,6 +78,58 @@ Controls for the creep, never-sleeping box on a flat native box collider: level 
 2° 0.34 m, 8° 1.42 m, 16° 3.18 m. **Creep is the solver's static friction slowly yielding on slopes**
 for bodies that never sleep, not a terrain-mesh effect. With sleeping, bodies stay exactly put.
 
+## Rapier (`bevy_rapier3d` 0.37) results
+
+Same harness and tests (`--no-default-features --features rapier`). Rapier's CCD is opt-in per
+body (`Ccd::enabled()`); its collision margin equivalent is `ContactSkin`.
+
+### Drops
+
+| Variant | Fall-throughs (per 1 000) | Step p50 / p99 |
+|---|---|---|
+| CCD off | **0** | 0.35 / 1.36 ms |
+| CCD on | **0** | 0.32 / 1.28 ms |
+| CCD on, terrain only (`--solo`), 3 site layouts | **0, 0, 0** | 0.24–0.41 / 0.85–1.93 ms |
+| CCD on, skin 5 cm, 2 site layouts (incl. the crowded one where Avian lost 4–6) | **0, 0** | 0.31–0.45 / 1.39–2.12 ms |
+
+Zero everywhere, with CCD off and with bodies colliding with each other. Because a result of zero
+proves nothing about the detector, two checks: 967 of 1 000 capsules had moved after 3 steps (the
+rest are the ~0 m/s drops), and a **positive control with no terrain reported all 1 000 as falling
+through**. Rapier's contact solver handles these fast approaches without CCD, which is also why the
+CCD setting changes nothing here.
+
+### Rays
+
+4.1 ms per 10 000 rays (Avian 4.8–6.5 ms); the same agreement with the field (1.6 mm p50, 1.2 cm
+p99) and the same 6 grazing-ray cases.
+
+### Rest (10 s settle, then 10 minutes)
+
+| Body, frame | Box allowed to sleep | Box never sleeping |
+|---|---|---|
+| 24 km, local frame | 0–0.47 m | 0–0.48 m |
+| Earth radius, local frame | 0–0.95 m | 0.01–1.46 m |
+| Earth radius, naive (control) | 0–2.0 m; one box went 120 km | 0.5–1.6 m |
+| Flat native box, 2° / 16° | 0.0 / 0.0 mm | 0.3 / 0.0 mm |
+
+A trace of one box (16° site, allowed to sleep): it settles onto the slope in 0.25 s, then creeps
+continuously (0.40 m at 1 s, 0.85 m at 20 s) with ±1° of rotation jitter, and does not fall asleep
+while it creeps. **On Rapier, creep comes from triangle-mesh contacts**: the same box holds
+perfectly still on a native box collider, even at 16°.
+
+## Engine comparison (headless)
+
+| | Avian 0.8 | Rapier 0.37 |
+|---|---|---|
+| Terrain fall-through, terrain-only drops to 300 m/s | 0 / 12 000 | 0 / 3 000 |
+| Fall-through with fast body–body impacts | 6 / 1 000 (0–5 with a 5 cm margin) | 0 |
+| Fall-through without CCD | ~375 / 1 000 | 0 |
+| Step time p99, 20 fast capsules + 25 patches | 3–7 ms | 0.85–2.1 ms |
+| 10 000 raycasts | 4.8–6.5 ms | 4.1 ms |
+| Bodies at rest on the terrain mesh | **sleeping: exactly still**; never sleeping: creep on slopes (solver-wide, also on native colliders) | **creep from mesh-contact jitter**, including bodies allowed to sleep (0.3–1.5 m) until they sleep |
+| 64-bit positions | `f64` feature | no (not needed with local frames) |
+| Built-in character controller | `MoveAndSlide` | `KinematicCharacterController` |
+
 ## Harness lessons
 
 1. **Bodies spawned within one step of the ground pass straight through** (no contact pair or
@@ -88,6 +140,10 @@ for bodies that never sleep, not a terrain-mesh effect. With sleeping, bodies st
 3. **Measure fall-through against the area that has collision.** A radius test counted bodies
    sliding off the edge of the patch block; the harness now tests the patch cells themselves.
 4. **The field sphere trace must bracket the crossing before bisecting** (B-004, docs/18).
+5. **A zero needs a positive control.** Rapier's 0 fall-throughs were only credible after a
+   no-terrain run showed the detector reports every drop.
+6. **Settling windows and "max drift" hide the mechanism.** A 3 s settle made Rapier's continuous
+   creep look like single tipping events; only a trace over time showed it.
 
 ## Findings so far
 
@@ -104,7 +160,7 @@ for bodies that never sleep, not a terrain-mesh effect. With sleeping, bodies st
 
 ## Still to do
 
-- Rapier: the same three tests.
+- Engine choice (needs the character test).
 - Character walking and jumping across patch seams and LOD changes (Avian `MoveAndSlide`), physics
   ms per frame in that test (pass ≤ 1 ms), and the user's feel check.
 - Decisions and write-back to docs/18 and docs/20.
