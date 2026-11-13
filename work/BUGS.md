@@ -34,19 +34,11 @@ this goal or next · **S3** when convenient.
   hashed), then add a spikes clippy step to CI, or decide that spikes are exempt and say so in
   `AGENTS.md`.
 
-### B-004 — docs/18 sphere-trace formula: inverted sign comment, unbracketed bisection
-- **Severity:** S3 · **Status:** fixed (E6 write-back, 2026-11-12) · **Found:** 2026-11-12
-- **Where:** docs/18 "Raycasting a star-shaped solid"
-- **Actual:** (1) `f(p) = (bulk.radius + height) − |p|` was commented "> 0 outside, < 0 inside",
-  but that expression is positive *inside* the solid. (2) "Step while `f > tol`, then bisect the
-  final segment" did not say the segment must bracket the crossing; implemented literally, the
-  spike's trace returned hits ~`tol` (14 cm) short, until it walked on until the sign changed.
-- **Fix:** docs/18 now uses `g(p) = |p| − surfaceRadius(dir(p))` (positive above ground) and states
-  that the final segment is extended in small steps until `g` changes sign before bisecting.
-- **Repro:** `spikes/physics`, `field_raycast`; E6 results.
+## Closed
 
 ### B-005 — The crater term has a vertical wall at every crater rim
-- **Severity:** S2 · **Status:** fixed (2026-11-12, found during E7) · **Found:** 2026-11-12
+- **Severity:** S2 · **Status:** fixed (2026-11-13, found during E7) · **Found:** 2026-11-12
+- **Fixed in:** `e727230`
 - **Where:** `spikes/field/src/lib.rs`, `Body::h0`, the crater loop.
 - **Expected:** a continuous crater profile: bowl inside the rim, raised rim outside.
 - **Actual:** the outside branch was `0.2·depth·(2 − t)`, which is `0.2·depth` at `t = 1` while the
@@ -63,7 +55,17 @@ this goal or next · **S3** when convenient.
   in `spikes/field/e2-expected.txt` was re-pinned deliberately (samples `550A2D4FDD6ECB63` →
   `E72B7878D4705E08`, bake unchanged; release and debug match on the reference machine).
 
-## Closed
+### B-004 — docs/18 sphere-trace formula: inverted sign comment, unbracketed bisection
+- **Severity:** S3 · **Status:** fixed (E6 write-back, 2026-11-12) · **Found:** 2026-11-12
+- **Fixed in:** `ea97a75`
+- **Where:** docs/18 "Raycasting a star-shaped solid"
+- **Actual:** (1) `f(p) = (bulk.radius + height) − |p|` was commented "> 0 outside, < 0 inside",
+  but that expression is positive *inside* the solid. (2) "Step while `f > tol`, then bisect the
+  final segment" did not say the segment must bracket the crossing; implemented literally, the
+  spike's trace returned hits ~`tol` (14 cm) short, until it walked on until the sign changed.
+- **Fix:** docs/18 now uses `g(p) = |p| − surfaceRadius(dir(p))` (positive above ground) and states
+  that the final segment is extended in small steps until `g` changes sign before bisecting.
+- **Repro:** `spikes/physics`, `field_raycast`; E6 results.
 
 ### B-003 — Free-flight camera pivots, crawls, or flickers after flying around the body
 - **Severity:** S2 · **Status:** fixed (E3, 2026-11-10)
