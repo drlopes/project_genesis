@@ -54,6 +54,7 @@ Keep it current. An out-of-date decision log is worse than none.
 | D41 | Biome borders use axis-value jitter, not positional domain warp; patchiness comes from a per-family mosaic prior | [19](./19-biome-classification.md#2-jitter), [09](./09-surface-field-stack.md#domain-warping) |
 | D42 | Rust + Bevy (pinned 0.20), PC only; the generator crates never depend on Bevy | [20](./20-tech-stack-and-workspace.md) |
 | D43 | Generation is bit-identical across platforms: `libm` maths, in-house hash/RNG/noise, ordered iteration, golden tests on Windows and Linux | [20](./20-tech-stack-and-workspace.md#determinism-rules), [11](./11-determinism-and-sampling.md) |
+| D44 | Voxels: 0.5 m, ±64 m region, surface nets, 32³ bricks; volume edits persist as records and are replayed (E7) | [10](./10-lod-and-streaming.md#voxels-vs-heightfield), [18](./18-collision-and-edits.md#the-voxelmesh-boundary) |
 
 ---
 
@@ -68,11 +69,15 @@ See [03](./03-planet-descriptor.md#versioning-and-regeneration) and
 [16](./16-data-contracts.md#frozen-derived-and-cached).
 
 ### Q2 — Voxel resolution and the mesh boundary
-The strategy is settled (D27): voxels near the player, heightfield/mesh at distance, one source
-of truth, and a boundary defined by distance and editability. The numbers are not: what voxel
-size, how far voxelisation extends, and how edits are stored and garbage-collected.
+**Resolved by E7 (2026-11-13) → D44.** Voxel size 0.5 m, a ±64 m region, surface nets, and
+volume edits stored as records and replayed; see the
+[E7 results](./spikes/E7-voxels-and-edits.md). Still open nearby: voxelising only on first edit
+(I-014, proposed), a coarser voxel LOD for distant regions (I-013), and the compaction thresholds,
+which belong to Q12.
 
-Resolve this with a **Phase 1 spike**, not a design meeting. `feature_scale` (see
+The strategy was settled first (D27): voxels near the player, heightfield/mesh at distance, one
+source of truth, and a boundary defined by distance and editability. The numbers came from a
+**Phase 1 spike**, not a design meeting. `feature_scale` (see
 [16](./16-data-contracts.md#lod-and-feature-metadata)) lets content declare its minimum
 resolution, so the boundary can be chosen after the spike without rewriting content. The edit
 record and voxel/mesh boundary contract are in

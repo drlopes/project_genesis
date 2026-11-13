@@ -101,6 +101,91 @@ they are not acted on directly.
 - **Cost / risk:** needs per-patch height bounds (cheap from the pyramid); a wrong bound would cull
   visible terrain, so test against mountains on the limb.
 
+### I-010 — Solids the radial field cannot express: arches, caves, floating islands
+- **Status:** new
+- **Raised:** 2026-11-12, from questions during E7 about arches and floating islands
+- **What:** three ways to get a solid that is not one surface per direction. (a) A voxel region
+  enclosing the feature: a signed field is enough, so the arch's underside and a free-floating
+  island are just sign patterns. (b) A **local solid** (landmark): a small star-shaped field with
+  its own centre, LOD and streaming, e.g. a floating island as its own entity. (c) A **union of
+  star-shaped blobs** (SDF `min`), which is not star-shaped as a whole and can give rings and
+  arches with holes through them.
+- **Why:** the radial model (`|p| < radius + height(dir(p))`) has exactly one surface per
+  direction, so arches, caves and floating islands are impossible today; an "arch" attempt is a
+  hill with a notch. Environment variety is the main product goal, so these are likely wanted.
+- **Cost / risk:** (a) memory and chunk allocation scale with the region's vertical extent — the
+  current E7 build allocates only the band around the ground, so a floating island would be
+  missed until allocation tests solid samples instead of the ground column. An arch must be fully
+  enclosed, since the heightfield boundary can only cut single-valued surface. (b) a new world
+  entity: streaming, collision, gravity, persistence, and a rule for which LODs it uses. (c) it
+  breaks docs/18's "one star-shaped solid" assumption behind the sphere trace and the
+  inside/outside test; a union needs each `g` to stay a conservative distance bound, and a
+  radius bound per blob for culling.
+- **Decision:** captured, not decided. Needs a world-model/content decision before any generator
+  or save format depends on it; E7 only measures option (a)'s numbers.
+
+### I-011 — Large edits visible from space (bake vs evaluate, and the terraform boundary)
+- **Status:** new
+- **Raised:** 2026-11-12, from a question during E7
+- **What:** make a large player edit readable at coarse LODs, so a big crater or scar can be seen
+  from orbit. Options: evaluate edits as an extra height term at every sample spacing (analytic
+  records), or bake them into a cache — the macro pyramid, or a displacement texture with mipmaps
+  added as a last layer to the generator.
+- **Why:** the coarse mesh samples the height function every 0.5–4000 m depending on distance, so
+  an edit is only visible if it spans several samples at the chosen band. That limit is LOD, not
+  storage: a texture does not make a 10 m hole visible from orbit, and should not (it would alias).
+- **Cost / risk:** a planet-wide texture has a fixed texel size (blocky close up), seams between
+  tiles, its own streaming, and must be rebuilt bit-identically from the edit records or two
+  clients disagree (E2). Analytic evaluation is exact and cheap for a handful of edits but costs
+  per sample for thousands. The macro pyramid is already the "from space" cache; rebaking its
+  affected cells is the natural route, with a bake version. Also a policy boundary: a multi-km
+  edit is a terraform, and docs/18 already excludes global terraforming from ordinary edits — a
+  threshold (edit vs narrative/descriptor event) has to be chosen, especially if edits ever become
+  shared between players.
+- **Decision:** captured. Measure first (E7 is 0.25–1 m edits, near the player); implement height
+  edits as an extra term per LOD, then cache only when edit counts justify it.
+
+### I-012 — Floating debris left by small edits
+- **Status:** new
+- **Raised:** 2026-11-13, from the user's E7 look test at 0.5 m ("smaller details get lost and
+  sometimes leave floating bits")
+- **What:** after overlapping small digs, thin slivers of solid only a voxel or two thick can be
+  cut off from the ground and are meshed as floating fragments. Options: (a) after each edit,
+  flood-fill solid samples within the edit's dirty chunks and remove components that touch neither
+  the ground nor the region floor and are below a size threshold; (b) turn such components into
+  physics debris that falls; (c) a minimum brush radius of ~2 voxels (1 m) so slivers are rarer.
+- **Why:** it reads as a bug, not as digging. Floating solids also collide.
+- **Cost / risk:** (a) and (b) must be deterministic and part of applying the record, or replay
+  diverges from the live region (E7 checks replay bit for bit). (b) is a gameplay decision.
+- **Decision:** captured; decide with the editing tools in Phase 2.
+
+### I-013 — Coarser voxel LOD for distant resident regions
+- **Status:** new
+- **Raised:** 2026-11-13, from the user's E7 look test ("1 m … only acceptable if viewed from a
+  great distance, as a LOD")
+- **What:** a base or dig site keeps its voxels resident when the player leaves (D27). Seen from
+  far away, mesh it from 1 m (or coarser) samples, the way the heightfield coarsens with distance.
+- **Why:** an edited site must keep its shape when seen from a distance, without full-resolution
+  meshes for every resident region.
+- **Cost / risk:** neighbouring voxel LODs need crack handling (Transvoxel-style transition cells,
+  or skirts as the heightfield uses), and a downsampled field must keep thin features from
+  vanishing. Interacts with I-011 (edits visible from orbit).
+- **Decision:** captured; revisit when bases exist.
+
+### I-014 — Voxelise on first edit
+- **Status:** new → proposed in docs/10, waiting on the user
+- **Raised:** 2026-11-13, from E7
+- **What:** keep heightfield patches for unedited ground everywhere, including near the player; a
+  chunk switches to voxels on its first edit, together with the neighbours whose mesh reads its
+  samples.
+- **Why:** E7 measured unedited voxels and the heightfield agreeing within 2 cm, so voxels add
+  nothing until something is edited. Building a full ±64 m region costs 4.2 s single-threaded on
+  arrival and 17 MB; on first edit it would cost ~33 ms per brick, only where needed.
+- **Cost / risk:** the heightfield must give up edited chunk footprints at runtime (a hole in the
+  patch mesh, or patch-level masking), with the non-radial enclosure rule of docs/18 applied at
+  that cut; the collision patches change the same way. Narrows D27 ("voxels near the player").
+- **Decision:** proposed in docs/10; needs the user's agreement.
+
 ## Closed
 
 ### I-005 — Compressed patch vertex format

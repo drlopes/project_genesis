@@ -4,34 +4,39 @@ Rules: [work/README.md](README.md). One active goal; everything else is captured
 
 ## Active goal
 
-**E7 — Voxels.** What voxel size and region radius give believable digging within budget?
-Definition: [docs/21 E7](../docs/21-phase-1-spike-plan.md#e7--voxels-and-edits-q2).
+**E8 — Classification cost and look.** Are the docs/19 defaults cheap enough and good-looking
+enough? Definition: [docs/21 E8](../docs/21-phase-1-spike-plan.md#e8--classification-cost-and-look).
 
-- [ ] Fixed test site; scripted edits (flatten, tunnel, cliff carve, 500 small digs)
-- [ ] Voxel size 0.25 / 0.5 / 1 m; region radius 32 / 64 / 128 m; surface nets versus marching
-      cubes (start by checking which of these is worth measuring)
-- [ ] Metrics: RAM per region, edit → remesh latency, seam at the voxel/mesh boundary, largest
-      edit radius per frame, record storage per 1 000 edits, superseded-edit GC
-- [ ] Look test with **the user** from 2 m; pick the coarsest size that passes
+- [ ] Top-down biome-map renders from the macro grid, stub content pack (8 aerial biomes,
+      1 ecotone, 1 variant)
+- [ ] Sharpness *k* 2 / 4 / 6; mosaic strength 0.2 / 0.35 / 0.6; jitter 0.5× / 1× / 2×
+- [ ] Metrics: L2 cost (from E1), border width, patch size distribution
+- [ ] The user picks a default set (one round; further tuning is Phase 2)
 
 ## Where we stopped
 
-E6 closed: Avian chosen and written back; the user's walking feel check passed ("works
-flawlessly; no glaring issues"). E7 is next, following the E6 collision model it depends on.
+E7 closed: 0.5 m voxels passed the user's look test; ±64 m region, surface nets, edits as
+records. E8 is the last Phase 1 experiment.
 
 ## Waiting on the user
 
-_Nothing._
+- **I-014 — voxelise on first edit** (proposed in docs/10): keep the heightfield for unedited
+  ground near the player and switch a chunk to voxels on its first edit. Agree, reject, or park.
 
 ## Up next
 
-1. **E8 — Classification look**, using top-down renders.
-2. **B-001** — decide on the `rng::below` wording or rejection step before anything persistent
+1. **B-001** — decide on the `rng::below` wording or rejection step before anything persistent
    depends on it.
-3. **B-002** — make `spike_field` clippy-clean, or exempt spikes from linting explicitly.
+2. **B-002** — make `spike_field` and `spike_voxel` clippy-clean, or exempt spikes from linting
+   explicitly.
 
 ## Done recently
 
+- 2026-11-13 — **E7 — Voxels and edits.** 0.5 m voxels (coarsest passing the user's look test;
+  1 m reads as broken), ±64 m region, surface nets in 32³ bricks: 17 MB, seam max 20 mm, a dig
+  remeshes in 23–31 ms. Edits as 66-byte records; replay bit-identical. Found and fixed B-005 (crater
+  rim walls in the field) and two mesher bugs the viewer exposed.
+  [Results](../docs/spikes/E7-voxels-and-edits.md).
 - 2026-11-12 — **E6 — Collision and physics.** Avian 0.8; per-patch trimesh colliders from the
   displayed patches; character walks and jumps across seams and LOD changes (0 fall-through,
   0 snags, ~0.5 ms p99), stands still exactly when idle, and the user found it flawless.
@@ -45,5 +50,3 @@ _Nothing._
   progress. [Results](../docs/spikes/E4-streaming-throughput.md).
 - 2026-11-11 — **I-005 — Compressed patch vertex format.** 32 bytes per vertex; terrain mesh
   331 MB; peak VRAM within budget; no visible artefacts.
-- 2026-11-10 — **E3 — LOD and quadtree** (and **E9 — build iteration**). Grid 65 × 65, SSE 16,
-  skirts + time-based geomorphing. [Results](../docs/spikes/E3-lod-and-quadtree.md).

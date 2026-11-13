@@ -37,6 +37,11 @@ green on both platforms).
 
 The harness itself was checked: with a deliberately wrong expected hash it exits with an error.
 
+**Re-pinned 2026-11-13 (E7, B-005).** The spike field's crater rim was made continuous on purpose,
+which changes the samples but not the bake. New reference: bake `12BD45A57E50BBA5` (unchanged),
+samples `E72B7878D4705E08`, identical over 1 / 4 / 16 threads in release and debug on the reference
+machine; CI re-checks Windows and Linux. The table above is the original E2 run.
+
 ## Decisions
 
 1. **Pass.** Generation is bit-identical across thread count (1 / 4 / 16), evaluation order,

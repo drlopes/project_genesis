@@ -1,0 +1,10 @@
+[package]
+name = "spike_voxel"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "E7: voxel regions near the player, surface extraction, edits, and the seam with the heightfield"
+
+[dependencies]
+genesis_core = { path = "../../crates/genesis_core" }
+spike_field = { path = "../field" }

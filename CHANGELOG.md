@@ -7,6 +7,12 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 ## [Unreleased]
 
 ### Changed
+- **Voxel numbers decided (Q2 → D44)**, from E7: 0.5 m voxels (the coarsest that passed the
+  user's look test from 2 m), a ±64 m region, surface nets in 32³ bricks, volume edits persisted as
+  records and replayed. docs/18 gains the chunk ownership and winding rules, on-demand bricks,
+  dirty-set rule, the record-based persistence and GC policy, and the rule that non-radial solids
+  must be enclosed by a voxel region. docs/10, docs/14, docs/16, docs/21 updated.
+- docs/10 proposes voxelising only on first edit (I-014), pending the user's decision.
 - **Physics engine decided: Avian 0.8** (docs/20), from E6: both candidates passed, Avian keeps
   resting bodies exactly still on terrain meshes. Terrain collision is per-patch triangle meshes
   built from the displayed patches, a few per frame; the character walks in a local physics frame.
@@ -15,6 +21,10 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 - E6 closed: the user's feel check passed ("works flawlessly; no glaring issues").
 
 ### Fixed
+- B-005: the spike field's crater term had a vertical wall at every rim (the raised rim started at
+  `0.2 · depth` where the bowl ended at 0, up to 60 m). The rim profile is now continuous. Found in
+  E7 as a 12 m "seam outlier". The E2 reference sample hash is re-pinned deliberately for it
+  (`spikes/field/e2-expected.txt`).
 - E6: the walking character slid downhill forever, even with no input. It commanded a downward
   velocity while grounded, which the slide query projected onto the slope. Contact now uses a ground
   snap (downward cast, ≤ 0.5 m) and the movement solver is not run at all when there is no input, so
@@ -25,6 +35,14 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
   culling boxes cover both morph shapes.
 
 ### Added
+- `spikes/voxel` (E7): voxel regions in 32³ bricks around a site, surface nets and a blocky
+  baseline, sphere/cylinder edits with on-demand bricks, an edit-record log with bit-exact replay,
+  and metrics for RAM, remesh latency, seam against the heightfield (including holes), record
+  storage and no-ops. `spike_app --bin voxel_view`: the look-test viewer (voxel size 1/2/3,
+  blocky B, edits E, tint T, `--shot`).
+- E7 results ([docs/spikes/E7-voxels-and-edits.md](docs/spikes/E7-voxels-and-edits.md)); ideas
+  I-010 (non-radial solids), I-011 (edits visible from space), I-012 (floating debris), I-013
+  (voxel LOD at distance), I-014 (voxelise on first edit).
 - `spikes/physics` (E6): headless Avian 0.8 tests for capsule drops, raycasts (engine versus our
   field sphere trace), and resting bodies, with per-site local physics frames and a naive control.
   `spike_app` is now a library plus the app binary, so the physics tests reuse the patch builder.

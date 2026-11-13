@@ -45,6 +45,24 @@ this goal or next · **S3** when convenient.
   that the final segment is extended in small steps until `g` changes sign before bisecting.
 - **Repro:** `spikes/physics`, `field_raycast`; E6 results.
 
+### B-005 — The crater term has a vertical wall at every crater rim
+- **Severity:** S2 · **Status:** fixed (2026-11-12, found during E7) · **Found:** 2026-11-12
+- **Where:** `spikes/field/src/lib.rs`, `Body::h0`, the crater loop.
+- **Expected:** a continuous crater profile: bowl inside the rim, raised rim outside.
+- **Actual:** the outside branch was `0.2·depth·(2 − t)`, which is `0.2·depth` at `t = 1` while the
+  inside branch is `0` there. Every crater rim was a discontinuity of up to 60 m across a single
+  sample — a vertical wall, and the source of the 12 m "seam outlier" seen in E7 (a 47 m step
+  within 0.1 m). The heightfield and the voxel mesh each resolve the wall differently, so a
+  pointwise height comparison there is meaningless.
+- **Fix:** the outside branch is now `0.8·depth·u·(1 − u)` with `u = t − 1` (zero at both ends of
+  the rim band, peak `0.2·depth` at `t = 1.5`), continuous with the bowl at `t = 1`.
+- **Repro:** before the fix, `spike_voxel --radius 128 --voxel 0.5 --seam` reports a max seam step
+  of ~12 m; a profile at 0.1 m spacing across the reported point jumps 47 m. After the fix, the
+  max is within a voxel and the profile is continuous. E1–E6 conclusions are unaffected (their
+  numbers are not read off crater rims). The fix changes the field's samples, so the E2 reference
+  in `spikes/field/e2-expected.txt` was re-pinned deliberately (samples `550A2D4FDD6ECB63` →
+  `E72B7878D4705E08`, bake unchanged; release and debug match on the reference machine).
+
 ## Closed
 
 ### B-003 — Free-flight camera pivots, crawls, or flickers after flying around the body

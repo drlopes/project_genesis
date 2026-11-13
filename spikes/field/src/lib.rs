@@ -202,10 +202,13 @@ impl Body {
             let dist = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]).sqrt() * self.radius;
             if dist < 2.0 * c.radius {
                 let t = (dist / c.radius) as f32;
+                // Bowl inside the rim, raised rim outside, both zero at `t = 1` so the
+                // profile is continuous (a hard step there is a 0.2·depth vertical wall).
                 crater += if t < 1.0 {
                     -c.depth * (1.0 - t * t)
                 } else {
-                    0.2 * c.depth * (2.0 - t)
+                    let u = t - 1.0;
+                    0.8 * c.depth * u * (1.0 - u)
                 };
             }
         }

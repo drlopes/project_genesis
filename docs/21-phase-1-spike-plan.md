@@ -105,7 +105,8 @@ Run in this order: E1 and E2 need no engine and gate everything else.
 | E4 — Streaming throughput | **done** | pass at rover speed; full detail while speed / height ≤ ~6 /s; workers never on all cores; [results](./spikes/E4-streaming-throughput.md) |
 | E5 — Coordinate precision | **done** | own camera-relative frame passes at 10¹⁰ m; physics part moved to E6; [results](./spikes/E5-coordinate-precision.md) |
 | E6 — Collision and physics | **done** | Avian 0.8; per-patch trimesh colliders from displayed patches; character passes (0 fall-through, 0 snags, ~0.5 ms p99), user felt it flawless; [results](./spikes/E6-collision-and-physics.md) |
-| E7–E8 | not started | — |
+| E7 — Voxels and edits | **done** | 0.5 m voxels (user's look test), ±64 m region, surface nets; seam max 20 mm, remesh 23–31 ms, 17 MB per region; edits as 66-byte records, replay bit-identical; [results](./spikes/E7-voxels-and-edits.md) |
+| E8 | not started | — |
 
 ### E1 — Field cost
 

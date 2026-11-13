@@ -289,16 +289,29 @@ region must sample the same L0–L3 field so its boundary matches the mesh.
 The overlap and seam-tolerance contract for the boundary is in
 [18 — Collision & Edits](./18-collision-and-edits.md#the-voxelmesh-boundary).
 
-`OPEN` — the numbers (Q2): voxel size, how far voxelisation extends, edit persistence
-granularity, and how edits are garbage-collected. Resolve these with the Phase 1 spike.
+`DECIDED` — the numbers (Q2, D44), from experiment **E7**
+([results](./spikes/E7-voxels-and-edits.md)):
 
-### The voxel spike
+- **Voxel size 0.5 m**, the coarsest that passed the user's look test from 2 m. It is also the
+  voxel size for the `feature_scale` validation in [16](./16-data-contracts.md#lod-and-feature-metadata).
+- **Region ±64 m** around the player, surface nets, bricks of 32³. Per region: 17 MB of samples,
+  3 MB of mesh, ~143 k triangles; a dig remeshes in 23–31 ms (single-threaded).
+- **Edits persist as records** and are replayed; GC and the full boundary contract are in
+  [18](./18-collision-and-edits.md#the-voxelmesh-boundary).
+- Building a whole region is the slow part (~33 ms per brick, 4.2 s for ±64 m single-threaded): it
+  runs on the generation workers, nearest bricks first.
 
-The voxel numbers are settled by experiment **E7** of the
-[Phase 1 spike plan](./21-phase-1-spike-plan.md#e7--voxels-and-edits-q2): voxel size, region
-radius, meshing cost, the seam at the mesh boundary, the maximum edit radius within the frame
-budget, and edit storage and garbage collection. The result also sets the voxel size used by the
-`feature_scale` validation in [16](./16-data-contracts.md#lod-and-feature-metadata).
+`PROPOSED` — **voxelise on first edit.** Unedited voxel terrain and the heightfield agree within
+2 cm (E7), so the voxels add nothing until something edits a chunk. A chunk would switch from
+heightfield to voxels on its first edit, together with the neighbours whose mesh reads its
+samples; arrival would cost nothing and RAM would scale with what was edited, not with the
+radius. This narrows D27's "voxels near the player" to "voxels where edited, near the player".
+The new piece is the heightfield giving up edited chunk footprints at runtime (the cut rule in
+[18](./18-collision-and-edits.md#the-voxelmesh-boundary) applies). Tracked as I-014; needs the
+user's agreement.
+
+Not decided: a coarser voxel LOD for distant resident regions (the user found 1 m acceptable only
+from far away, as a LOD) — I-013.
 
 ---
 

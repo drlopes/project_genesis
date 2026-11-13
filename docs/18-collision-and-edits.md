@@ -324,8 +324,15 @@ pinned version is a migration event, not a silent reinterpretation.
 - Edit records persist permanently. They are small.
 - Derived data (meshes, collision patches, voxel meshes) is evicted with the chunk.
 - **Height and material edits** are cheap to keep and cheap to replay.
-- **Volume edits** are the expensive case: store only the changed voxels, not the whole region.
-  `OPEN` — the exact representation and GC policy are part of Q2 and Q12 in
+- **Volume edits persist as records, not as voxels.** `DECIDED` from
+  [E7](./spikes/E7-voxels-and-edits.md#edit-records-storage-replay-garbage-collection): a record is
+  ~66 bytes (66 KB per 1 000 edits) at any voxel size; the same 525 edits stored as changed voxels
+  cost ~10× more at 0.5 m. Replaying the records over the base reproduces the edited region bit
+  for bit, at ~0.1 ms per record.
+- **Garbage collection.** A record that changes nothing when applied is dropped at creation. A
+  chunk's records are compacted into a changed-voxel delta (sparse indices + quantised values)
+  only when they cost more than that delta, in bytes or replay time: the superseded-edit case,
+  where many records rewrite the same voxels. `PROPOSED` — the exact thresholds; part of Q12 in
   [14 — Open Questions & Roadmap](./14-open-questions-and-roadmap.md).
 
 ### Large-scale changes
@@ -344,8 +351,8 @@ pinned version is a migration event, not a silent reinterpretation.
 The strategy is decided in [10 — LOD & Streaming](./10-lod-and-streaming.md) (D27); this is the
 contract that makes it seam-free.
 
-- A voxel region covers an explicit box. Inside it, `isSolid` is sampled at voxel centres and
-  meshed with marching cubes (or an equivalent surface extractor).
+- A voxel region covers an explicit box. Inside it, the signed distance `g` (negative inside) is
+  sampled at voxel corners and meshed with **surface nets**.
 - Outside it, the mesh samples the same `isSolid`.
 - The voxel region extends **at least one voxel beyond** the mesh boundary, so the two overlap.
   Do not rely on exact vertex matching; overlap is what hides the cut.
@@ -354,8 +361,36 @@ contract that makes it seam-free.
 - Seam tolerance is `0.5 · voxelSize`. A larger visible step is a bug, not a LOD artefact.
 - The voxel region stays resident while the player is within `interactionRadius`, or while a base,
   edit, or building inside it needs to persist.
+- **Non-radial solidity must be enclosed by a voxel region.** An arch, a cave mouth, or an overhang
+  cannot cross the region boundary, because the heightfield side can only continue a single-valued
+  (radial) surface; a tunnel reaching the box edge would be visibly capped by the heightfield. This
+  is a content and layout rule, not a meshing bug (see I-010).
 
-`OPEN` — the numbers: voxel size, region extent, edit persistence granularity, and GC (Q2).
+`DECIDED` — the numbers, from [E7](./spikes/E7-voxels-and-edits.md) (D44):
+
+| | Value | Why |
+|---|---|---|
+| Voxel size | **0.5 m** | coarsest size that passed the user's look test from 2 m; 1 m reads as broken terrain |
+| Region | **±64 m** around the player (128 × 128 m, band from 8 m below the ground to 2 m above) | 17 MB samples + 3 MB mesh; ±128 m fits in RAM but takes 15 s to build single-threaded |
+| Storage | bricks of 32³ f32 samples (128 KB), one per chunk; samples are global, stored once | |
+| Seam | max 20 mm measured against 250 mm tolerance | |
+| Remesh | ~2.8 ms per chunk; a dig dirties 8–12 chunks, 23–31 ms single-threaded (limit 50 ms) | |
+
+Rules that came out of E7:
+
+- **Chunk ownership** (surface nets). A chunk owns the lattice edges whose start node is local
+  `0..32` along the edge's own axis and `1..=32` on the other two. Each owned edge's quad joins the
+  four cells around it, which lie in local `0..=32`, so a chunk computes vertices for `33³` cells
+  from `34³` nodes: its own samples plus two apron layers read from the neighbouring brick (or the
+  field, if that brick is not resident). Owning only quads whose cells are all local leaves a crack
+  along every chunk boundary.
+- **Winding comes from the voxel signs**: a quad faces from the solid end of its edge to the empty
+  end. Averaged vertex normals can disagree at a sharp rim, and the face is then culled.
+- **An edit never drops samples.** If it reaches a brick inside the region that is not resident,
+  that brick is filled from the field first.
+- **An edit dirties every chunk that reads the samples it changed**, including the neighbours below
+  on each axis whose apron covers them (local indices 0 and 1).
+- `PROPOSED` — voxelise on first edit: see [10](./10-lod-and-streaming.md#voxels-vs-heightfield).
 
 ---
 

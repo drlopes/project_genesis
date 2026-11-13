@@ -5622,6 +5622,7 @@ dependencies = [
  "bevy",
  "genesis_core",
  "spike_field",
+ "spike_voxel",
 ]
 
 [[package]]
@@ -5640,6 +5641,14 @@ dependencies = [
  "bevy_rapier3d",
  "genesis_core",
  "spike_app",
+ "spike_field",
+]
+
+[[package]]
+name = "spike_voxel"
+version = "0.0.0"
+dependencies = [
+ "genesis_core",
  "spike_field",
 ]
 

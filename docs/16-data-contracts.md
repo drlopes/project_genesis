@@ -289,11 +289,10 @@ Why this is mandatory:
 
 - **Band-limiting.** A suite that makes 2 m features must not be evaluated at a LOD whose sample
   spacing is 40 m. Without `feature_scale`, the streaming layer cannot enforce this.
-- **Voxel budget.** The voxel/mesh boundary (Q2) is not settled. `feature_scale` is how content
-  declares its minimum resolution, so the boundary can be chosen *after* the spike without
-  rewriting content.
-- **Validation.** Once the voxel size exists, the validator warns when `feature_scale` is below
-  it.
+- **Voxel budget.** `feature_scale` is how content declares its minimum resolution, so the
+  voxel/mesh boundary could be chosen *after* the spike without rewriting content. E7 set it
+  (Q2, D44): voxels are 0.5 m.
+- **Validation.** The validator warns when `feature_scale` is below the voxel size, 0.5 m.
 
 See [09 — Surface Field Stack](./09-surface-field-stack.md) and
 [10 — LOD & Streaming](./10-lod-and-streaming.md).

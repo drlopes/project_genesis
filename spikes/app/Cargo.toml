@@ -7,6 +7,7 @@ description = "E3–E7: Bevy app streaming cube-sphere patches from the spike fi
 
 [dependencies]
 spike_field = { path = "../field" }
+spike_voxel = { path = "../voxel" }
 genesis_core = { path = "../../crates/genesis_core" }
 bevy = "0.20"
 # E6: the walking character. Same feature set as spikes/physics, so the build is shared.
