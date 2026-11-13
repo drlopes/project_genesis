@@ -35,17 +35,15 @@ this goal or next · **S3** when convenient.
   `AGENTS.md`.
 
 ### B-004 — docs/18 sphere-trace formula: inverted sign comment, unbracketed bisection
-- **Severity:** S3 · **Status:** open (fix in the E6 write-back to docs/18)
-- **Found:** 2026-11-12, during E6, implementing the field raycast from docs/18
+- **Severity:** S3 · **Status:** fixed (E6 write-back, 2026-11-12) · **Found:** 2026-11-12
 - **Where:** docs/18 "Raycasting a star-shaped solid"
-- **Expected:** a formula that can be implemented as written.
-- **Actual:** (1) `f(p) = (bulk.radius + height) − |p|` is commented "> 0 outside, < 0 inside",
+- **Actual:** (1) `f(p) = (bulk.radius + height) − |p|` was commented "> 0 outside, < 0 inside",
   but that expression is positive *inside* the solid. (2) "Step while `f > tol`, then bisect the
-  final segment" does not say the segment must bracket the crossing; implemented literally, the
+  final segment" did not say the segment must bracket the crossing; implemented literally, the
   spike's trace returned hits ~`tol` (14 cm) short, until it walked on until the sign changed.
+- **Fix:** docs/18 now uses `g(p) = |p| − surfaceRadius(dir(p))` (positive above ground) and states
+  that the final segment is extended in small steps until `g` changes sign before bisecting.
 - **Repro:** `spikes/physics`, `field_raycast`; E6 results.
-- **Fix:** use `g(p) = |p| − surfaceRadius(p)` (positive above ground), and state that the final
-  segment is extended in small steps until `g` changes sign before bisecting.
 
 ## Closed
 

@@ -7,6 +7,10 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 ## [Unreleased]
 
 ### Fixed
+- E6: the walking character slid downhill forever, even with no input. It commanded a downward
+  velocity while grounded, which the slide query projected onto the slope. Contact now uses a ground
+  snap (downward cast, ≤ 0.5 m) and the movement solver is not run at all when there is no input, so
+  idle drift is exactly zero (measured over five idle phases on ground up to 20°).
 - B-003: the spike's free-flight camera flipped over the poles, crawled at 2 m/s below the
   reference sphere, and morphing patches could be frustum-culled while visible. Orientation now
   uses parallel transport (`spikes/app/src/flycam.rs`), speed is measured from the ground, and
@@ -16,7 +20,12 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 - `spikes/physics` (E6): headless Avian 0.8 tests for capsule drops, raycasts (engine versus our
   field sphere trace), and resting bodies, with per-site local physics frames and a naive control.
   `spike_app` is now a library plus the app binary, so the physics tests reuse the patch builder.
-- B-004 logged (docs/18 sphere-trace formula).
+- E6 character test in `spikes/physics` (both engines, same controller logic: 0 fall-through, 0
+  snags, ~0.5 ms p99 per step) and in the app: Avian walking with colliders built from the
+  displayed patches near the player, add-before-remove, at most 4 per frame, in a local physics
+  frame; **C** toggles walking; `--auto-walk` measures idle drift, ground gap, and step cost.
+- B-004 fixed (docs/18 sphere-trace formula): `g(p) = |p| − surfaceRadius`, and the bisection must
+  bracket a sign change.
 - E3 geomorphing in `spikes/app`: custom terrain material and WESL shader; each vertex carries its
   parent level's position, normal, and colour, and patches morph over 0.5 s on split and merge
   (`--morph-s`). Debug keys M/G/L/P, `--shots` screenshots during the scripted fly-in. Fixed: patches

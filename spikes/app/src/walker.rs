@@ -26,7 +26,12 @@ const BUILD_PER_FRAME: usize = 4;
 const WALK: f32 = 6.0;
 const RUN: f32 = 12.0;
 const JUMP: f32 = 5.0;
-const STICK: f32 = 6.0;
+/// Ground snap: after a grounded move, settle onto walkable ground up to this far below.
+/// (The first version instead pushed down at 6 m/s while grounded; `MoveAndSlide` projected that
+/// onto slopes as a slide that never stopped, even with no input.)
+const SNAP_M: f32 = 0.5;
+/// Walkable: surface normal within 50° of up.
+const WALKABLE_COS: f32 = 0.64;
 
 #[derive(Component)]
 pub struct Character;
@@ -65,6 +70,15 @@ pub struct AutoStats {
     pub move_ms: Vec<f32>,
     pub distance: f64,
     pub shot: bool,
+    /// Idle phases (no input): position at the start of the current idle phase, the largest
+    /// sideways drift seen in any idle phase (must be zero: no movement without input), and the
+    /// largest settle along the surface normal (contact tracking, not drift).
+    pub idle_start: Option<DVec3>,
+    pub idle_drift_max: f64,
+    pub idle_settle_max: f64,
+    pub idle_steps: usize,
+    /// Steepest ground (degrees) an idle phase started on: the sliding case.
+    pub idle_slope_max: f64,
 }
 
 impl Walking {
@@ -103,6 +117,20 @@ fn surface_radius(terrain: &Terrain, d: DVec3) -> f64 {
         &mut s,
     );
     terrain.body.radius + s.height as f64
+}
+
+/// Ground slope under a body-local direction, from the field 0.5 m east and north.
+fn slope_deg(terrain: &Terrain, d: DVec3) -> f64 {
+    let c = d * surface_radius(terrain, d);
+    let reference = if d.y.abs() < 0.9 { DVec3::Y } else { DVec3::X };
+    let east = reference.cross(d).normalize();
+    let north = d.cross(east);
+    let toward = |t: DVec3| {
+        let q = (d + t * 0.5).normalize();
+        q * surface_radius(terrain, q)
+    };
+    let normal = (toward(east) - c).cross(toward(north) - c).normalize();
+    normal.dot(d).abs().acos().to_degrees()
 }
 
 /// C toggles walking: drop a character on the ground under the camera, or return to flight.
@@ -250,6 +278,28 @@ pub fn stream_colliders(
     walking.ready = walking.ready_in == 0 && walking.colliders > 0;
 }
 
+/// Cast the capsule down along `-up` and settle it 1 cm above walkable ground. `None` if there is
+/// no walkable ground within [`SNAP_M`] below (steep ground: no snap, the character falls).
+fn snap_down(
+    spatial: &SpatialQuery,
+    collider: &Collider,
+    pos: Vec3,
+    rotation: Quat,
+    up: Vec3,
+    filter: &SpatialQueryFilter,
+) -> Option<Vec3> {
+    let down = Dir3::new(-up).ok()?;
+    let hit = spatial.cast_shape(
+        collider,
+        pos,
+        rotation,
+        down,
+        &ShapeCastConfig::from_max_distance(SNAP_M),
+        filter,
+    )?;
+    (hit.normal1.dot(up) > WALKABLE_COS).then(|| pos - up * (hit.distance - 0.01).max(0.0))
+}
+
 /// Fixed-step movement with `MoveAndSlide`. With `--auto-walk`, walks forward and jumps every
 /// 3 s, and records how the character sits on the field surface.
 #[allow(clippy::too_many_arguments)]
@@ -260,6 +310,7 @@ pub fn move_character(
     terrain: Res<Terrain>,
     mut walking: ResMut<Walking>,
     move_and_slide: MoveAndSlide,
+    spatial: SpatialQuery,
     cam: Query<&Transform, (With<FlyCam>, Without<Character>)>,
     mut ch: Query<(Entity, &Collider, &mut Transform), With<Character>>,
 ) {
@@ -280,9 +331,12 @@ pub fn move_character(
     let fwd = flat(inv * *cam.forward());
     let right = flat(inv * *cam.right());
     let auto = config.auto_walk > 0.0;
-    let auto_jump = auto && (walking.auto.t % 3.0) < dt as f64 && walking.auto.t > 1.0;
+    // Auto-walk cycle (9 s): walk 6 s with a jump at 1 s and 4 s, then stand still 3 s.
+    let phase = walking.auto.t % 9.0;
+    let auto_idle = auto && phase >= 6.0;
+    let auto_jump = auto && !auto_idle && (phase % 3.0) < dt as f64 && walking.auto.t > 1.0;
     let mut dir = Vec3::ZERO;
-    if keys.pressed(KeyCode::KeyW) || auto {
+    if keys.pressed(KeyCode::KeyW) || (auto && !auto_idle) {
         dir += fwd;
     }
     if keys.pressed(KeyCode::KeyS) {
@@ -299,36 +353,64 @@ pub fn move_character(
     } else {
         WALK
     };
-    if walking.grounded {
-        walking.vy = if keys.pressed(KeyCode::Space) || auto_jump {
-            JUMP
-        } else {
-            -STICK
-        };
+    let jump = walking.grounded && (keys.pressed(KeyCode::Space) || auto_jump);
+    let idle = dir == Vec3::ZERO && !jump && walking.grounded;
+    let filter = SpatialQueryFilter::from_excluded_entities([entity]);
+    // Standing still on walkable ground: no solver call at all, so no lateral motion is possible.
+    // (Skipping the solver matters: with zero velocity, its depenetration pass against the terrain
+    // trimeshes still crept ~5 mm per idle phase, which reads as "the character never stops".)
+    // The ground snap stays, so the character follows the surface if it changes underfoot, and it
+    // moves only along `up`.
+    let (pos, grounded) = if idle {
+        walking.vy = 0.0;
+        match snap_down(&spatial, collider, walking.cur, tf.rotation, up, &filter) {
+            Some(p) => (p, true),
+            None => (walking.cur, false),
+        }
     } else {
-        walking.vy -= 9.81 * dt;
-    }
-    let vel = dir.normalize_or_zero() * speed + up * walking.vy;
-    let mut grounded = false;
-    let out = move_and_slide.move_and_slide(
-        collider,
-        tf.translation,
-        tf.rotation,
-        vel,
-        Duration::from_secs_f32(dt),
-        &MoveAndSlideConfig::default(),
-        &SpatialQueryFilter::from_excluded_entities([entity]),
-        |hit| {
-            if hit.normal.dot(up) > 0.64 {
-                grounded = true;
+        if jump {
+            walking.vy = JUMP;
+        } else if walking.grounded {
+            walking.vy = 0.0;
+        } else {
+            walking.vy -= 9.81 * dt;
+        }
+        let vel = dir.normalize_or_zero() * speed + up * walking.vy;
+        let mut landed = false;
+        let out = move_and_slide.move_and_slide(
+            collider,
+            tf.translation,
+            tf.rotation,
+            vel,
+            Duration::from_secs_f32(dt),
+            &MoveAndSlideConfig::default(),
+            &filter,
+            |hit| {
+                if hit.normal.dot(up) > WALKABLE_COS {
+                    landed = true;
+                }
+                MoveAndSlideHitResponse::Accept
+            },
+        );
+        let pos = out.position;
+        let (pos, grounded) = if walking.grounded && !jump {
+            // Snap down onto walkable ground (walking downhill would otherwise leave the ground).
+            // On ground steeper than walkable there is no snap: the character falls or slides,
+            // which is the deliberate behaviour there.
+            match snap_down(&spatial, collider, pos, tf.rotation, up, &filter) {
+                Some(p) => (p, true),
+                None => (pos, false),
             }
-            MoveAndSlideHitResponse::Accept
-        },
-    );
-    walking.grounded = grounded && walking.vy <= 0.0;
+        } else {
+            (pos, landed && walking.vy <= 0.0)
+        };
+        (pos, grounded)
+    };
+    walking.grounded = grounded;
     walking.prev = walking.cur;
-    walking.cur = out.position;
-    tf.translation = out.position;
+    walking.cur = pos;
+    tf.translation = pos;
+    let idle_now = idle;
     walking.move_ms = t.elapsed().as_secs_f32() * 1000.0;
     if auto {
         let p = walking.to_body(walking.cur);
@@ -336,6 +418,22 @@ pub fn move_character(
         let (grounded, ms) = (walking.grounded, walking.move_ms);
         let step = (walking.cur - walking.prev).length() as f64;
         let a = &mut walking.auto;
+        if idle_now && auto_idle {
+            if a.idle_start.is_none() {
+                a.idle_slope_max = a.idle_slope_max.max(slope_deg(&terrain, p.normalize()));
+            }
+            let start = *a.idle_start.get_or_insert(p);
+            let d = p - start;
+            // Drift is measured across the ground, not along the surface normal: settling onto the
+            // ground (vertical, cm at most) is contact tracking, while sideways creep is the bug.
+            let n = p.normalize();
+            let flat = (d - n * d.dot(n)).length();
+            a.idle_drift_max = a.idle_drift_max.max(flat);
+            a.idle_settle_max = a.idle_settle_max.max(d.length());
+            a.idle_steps += 1;
+        } else {
+            a.idle_start = None;
+        }
         a.t += dt as f64;
         a.steps += 1;
         a.move_ms.push(ms);
@@ -387,12 +485,17 @@ pub fn auto_report(
     };
     println!(
         "{{ \"test\": \"auto-walk\", \"seconds\": {:.1}, \"distance_m\": {:.1}, \"steps\": {}, \"grounded_steps\": {}, \"fell_through_steps\": {}, \
+         \"idle_steps\": {}, \"idle_drift_max_m\": {:.6}, \"idle_settle_max_m\": {:.4}, \"idle_slope_max_deg\": {:.1}, \
          \"ground_gap_m\": {{ \"p1\": {:.3}, \"p50\": {:.3}, \"p99\": {:.3} }}, \"move_ms\": {{ \"p50\": {:.3}, \"p99\": {:.3}, \"max\": {:.3} }} }}",
         a.t,
         a.distance,
         a.steps,
         a.grounded_steps,
         a.fell,
+        a.idle_steps,
+        a.idle_drift_max,
+        a.idle_settle_max,
+        a.idle_slope_max,
         p(&a.gaps, 0.01),
         p(&a.gaps, 0.5),
         p(&a.gaps, 0.99),

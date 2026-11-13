@@ -204,14 +204,28 @@ character's eyes, interpolated between fixed steps. Colliders use each patch's o
 0.5 s morph the visible surface lies between parent and own shape, so the two can briefly differ by
 the morph offset.
 
-Automated check (`spike_app --auto-walk 30`: walk forward, jump every 3 s): 198 m in 30 s,
-0 fall-through, capsule bottom 1.5 cm above the field surface at p50 (2.7 cm p99), movement step
-0.05 ms p50 / 0.07 ms p99 (physics step itself measured headless: ~0.5 ms p99).
+Automated check (`spike_app --auto-walk 45`: 6 s walking with a jump, then 3 s standing still, five
+times): 189 m, 0 fall-through, capsule bottom 1.1 cm above the field surface at p50 (1.7 cm p99),
+movement step 0.03 ms p50 / 0.05 ms p99 (physics step itself measured headless: ~0.5 ms p99).
+
+**The first in-app controller slid forever, even with no input.** It commanded a 6 m/s downward
+velocity while grounded, to stay in contact; `MoveAndSlide` projected that onto the slope, which is a
+permanent downhill slide. The headless character test missed it because its walker never stood
+still. The fix, now in docs/18:
+
+- contact is kept by a **ground snap** (downward shape cast, ≤ 0.5 m), with no downward velocity;
+- **with no input the solver is not run at all**, so nothing can move (zero-velocity solver steps
+  still crept ~5 mm per 3 s from depenetration against the triangle mesh);
+- walkable is ≤ 50° from the local up; steeper ground gets no snap, so falling or sliding there is
+  deliberate.
+
+Idle is now measured explicitly: across five idle phases, on ground up to 20.3°, sideways drift is
+**exactly 0.000000 m** (vertical settle also 0.0000 m).
 
 Not done in the spike: rebasing the physics frame when the character walks far from where walking
 started (the frame stays valid for kilometres on this body; a production frame rebases).
 
 ## Still to do
 
-- The user's feel check.
-- Decisions and write-back to docs/18 and docs/20.
+- The user's re-check of the sliding fix.
+- Decisions and write-back to docs/20.

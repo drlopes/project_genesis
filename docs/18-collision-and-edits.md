@@ -133,12 +133,14 @@ Because the solid is star-shaped and the height field is band-limited, a conserv
 is valid:
 
 ```text
-f(p)   = (bulk.radius + height(dir(p))) − |p|   // > 0 outside, < 0 inside
-slope  = localSlopeBound(p, lod)                 // |∇h| upper bound
-step   = clamp(f(p) / (1 + slope), minStep, maxStep)
+g(p)   = |p| − surfaceRadius(dir(p))   // > 0 above the surface, < 0 inside
+slope  = localSlopeBound(p, lod)       // |∇h| upper bound
+step   = clamp(g(p) / (1 + slope), minStep, maxStep)
 ```
 
-- Step by `step` while `f > tol`, then bisect the final segment for the exact crossing.
+- Step by `step` while `g > tol`. The final segment may stop short of the surface: extend it in
+  small steps until `g` changes sign, then bisect between those two points. A bisection whose
+  endpoints have the same sign silently returns a point `tol` short of the ground.
 - `slope` may be estimated from the local samples or bounded by the generator; either way it must
   be conservative, or the trace can step through a ridge.
 - Stop after a fixed iteration cap. If the cap is hit, fall back to the macro pyramid and record a
@@ -181,6 +183,24 @@ This follows from D8 and D9: water is a level, not a fluid and not a mesh collid
 
 This is what keeps "water is a level" honest: the pretty surface and the physical surface are the
 same plane, with cosmetic motion on top.
+
+### Walking on a heightfield
+
+- The character is a kinematic capsule moved by a slide query against the collision mesh at the
+  visual LOD. Contact is kept by a **ground snap** — a downward shape cast, capped at 0.5 m — not
+  by commanding downward velocity: a downward velocity projected onto a slope becomes a slide that
+  never stops, even with no input.
+- **With no input the requested motion is exactly zero and the movement solver is not run at all.**
+  On walkable ground the character cannot move. (Letting the solver run with zero velocity still
+  crept about 5 mm per 3 s of standing, from contact depenetration against the triangle mesh.)
+- **Walkable** is a surface normal within 50° of the local up. Steeper ground gets no snap: the
+  character falls or slides, deliberately.
+- The capsule stands about 1 cm above the collision surface (the snap offset), inside the collision
+  tolerance. Walking downhill faster than gravity can follow is what the snap is for.
+- A collision LOD change under a standing character moves it only along the local up, never
+  sideways.
+- Colliders are added before the old ones are removed, and only a few per frame: rebuilding a block
+  of collision patches in one frame cost 16–39 ms in both engines (E6).
 
 ### Seams and normals
 
@@ -371,6 +391,9 @@ These must hold for every body, at every LOD, with any edit set:
 8. **Voxel agreement.** Voxel solidity equals `baseSolid` outside edit bounds.
 9. **Volume overrides are bounded.** A volume edit changes solidity only inside its `bounds`.
 10. **Authored and player edits share one type and one order.**
+11. **No movement without input.** A character standing on walkable ground does not move, not even
+    by contact depenetration. Contact is kept by a ground snap, never by a commanded downward
+    velocity.
 
 A violation is a bug in collision, edits, or content — not a tuning problem.
 

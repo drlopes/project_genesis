@@ -23,20 +23,23 @@ what cost, with no fall-through? Definition:
 - [x] Character in the app with Avian (`walker.rs`): colliders from displayed patches within 40 m,
       4 builds/frame, add-before-remove; local physics frame; `--auto-walk` check: 198 m in 30 s,
       0 fall-through, ground gap 1.5 cm p50 / 2.7 cm p99, move 0.07 ms p99
-- [ ] **User** tries the feel
-- [ ] Decisions; write-back to docs/18 (incl. B-004) and docs/20
+- [x] **User** feel check: mostly right, but the character never stopped sliding. Cause: a commanded
+      downward velocity while grounded, projected onto the slope. Fix: ground snap + no solver run
+      when idle; idle drift now exactly 0 over five idle phases on ground up to 20°
+- [ ] **User** re-checks the sliding fix
+- [ ] Decisions; write-back to docs/18 (incl. B-004, done) and docs/20
 
 ## Where we stopped
 
-Both engines measured headless; comparison in `docs/spikes/E6-collision-and-physics.md`. Next:
-the character test (walk and jump across seams and LOD changes), which decides the engine.
+Engine chosen provisionally (Avian) and the character is in the app. The user found permanent
+sliding; fixed and verified automatically, waiting for their re-check.
 
 ## Waiting on the user
 
-1. **E6 character feel check.** From `spikes/`: `cargo run --release -p spike_app`, fly near
-   the ground, press **C** to walk (WASD, Space jump, Shift run, right mouse to look, C again to
-   fly). Judge: sinking or floating, snagging (especially at patch seams, visible with **L**),
-   jumping and landing, walking up and down hills, anything that feels wrong.
+1. **E6 sliding fix re-check.** From `spikes/`: `cargo run --release -p spike_app`, fly near the
+   ground, press **C** to walk, then **stand still on a slope with no keys pressed**. The character
+   must not creep. Judge the rest again: sinking or floating, snagging (seams visible with **L**),
+   jumping and landing, walking up and down hills.
 
 ## Up next
 
