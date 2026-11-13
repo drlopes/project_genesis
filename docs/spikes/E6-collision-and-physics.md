@@ -117,6 +117,31 @@ continuously (0.40 m at 1 s, 0.85 m at 20 s) with ±1° of rotation jitter, and 
 while it creeps. **On Rapier, creep comes from triangle-mesh contacts**: the same box holds
 perfectly still on a native box collider, even at 16°.
 
+## Character test (headless, both engines)
+
+A kinematic capsule (r 0.3 m, 1.8 m) walks 96 m at 6 m/s along local +X across the finest-level
+patches (crossing ~5 patch seams per walk), jumping every 3 s, at 10 sites. Identical controller
+logic in both engines (`spikes/physics/src/walk.rs`): gravity when airborne, a downward push when
+grounded, no snapping, no auto-step, walkable up to 50°. Avian: `MoveAndSlide`; Rapier:
+`KinematicCharacterController` (1 cm offset, slide, no snap). `--lod-swap` replaces the collision
+block with the next coarser level and back every 2 s.
+
+| | Avian 0.8 | Rapier 0.37 |
+|---|---|---|
+| Fall-through / snag events (incl. at seams) | 0 / 0 | 0 / 0 |
+| Ground gap p1 / p50 / p99 (capsule bottom − field) | 0.6 / 1.2 / 2.1 cm | 0.5 / 1.2 / 2.0 cm |
+| Step time (physics + controller) p50 / p99 | **0.21 / 0.51 ms** | **0.23 / 0.58 ms** |
+| Worst step, no LOD swap | 0.85 ms | 11.1 ms (unexplained) |
+| LOD swaps: vertical jolt p50 / max | 3.6 / 9.6 cm | 0.8 / 7.5 cm |
+| LOD swaps: ground gap p1 / p99 | −10 / +12 cm | −10 / +12 cm |
+| LOD swaps: worst step (whole block of 25–49 trimeshes rebuilt at once) | 16 ms | 39 ms |
+
+Both pass the plan's walking criteria (≤ 1 ms per frame, no snagging at seams). The snag detector
+was checked with a positive control: a 0.5 m step across the path gave 9 snag events (485 steps).
+The LOD-swap gap (±10 cm) is the difference between two levels' surfaces, inside docs/18's collision
+tolerance for the coarser level (`0.5 · 0.58 m` = 29 cm). Rebuilding many trimesh colliders in one
+frame is expensive in both engines: collision patch builds must be spread across frames.
+
 ## Engine comparison (headless)
 
 | | Avian 0.8 | Rapier 0.37 |
@@ -158,9 +183,18 @@ perfectly still on a native box collider, even at 16°.
 5. Never-sleeping bodies creep on slopes; anything that must hold still while awake needs a
    kinematic or anti-creep treatment.
 
+## Provisional engine choice: Avian
+
+Equal on the character test. Avian is preferred because bodies resting on the terrain mesh stay
+exactly still once asleep (Rapier's creep 0.3–1.5 m on mesh contacts before sleeping, which would
+show as props sliding on slopes), its worst-case step in the walking test is lower, and it is
+ECS-native with an `f64` option. Rapier is better in violent body–body impacts at the ground
+(0 versus 6 per 1 000 in the crowded 300 m/s test) and in step-time tail during them; Avian's case
+has known mitigations (terrain collision margin, sweeping fast bodies against dynamic ones, a
+depenetration safety net against the field).
+
 ## Still to do
 
-- Engine choice (needs the character test).
-- Character walking and jumping across patch seams and LOD changes (Avian `MoveAndSlide`), physics
-  ms per frame in that test (pass ≤ 1 ms), and the user's feel check.
+- Character in the app with Avian (collision patches streamed from the displayed visual patches
+  near the player, in a local physics frame); the user's feel check.
 - Decisions and write-back to docs/18 and docs/20.

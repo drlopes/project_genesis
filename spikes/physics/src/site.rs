@@ -130,12 +130,39 @@ impl Site {
         f == f0 && (x - x0).abs() <= r && (y - y0).abs() <= r
     }
 
+    /// Slope of the terrain under local (x, z), in degrees, from the surface 1 m east and north.
+    pub fn slope_deg(&self, world: &World, x: f64, z: f64) -> f64 {
+        let c = self.above_ground(world, x, z, 0.0);
+        let e = self.above_ground(world, x + 1.0, z, 0.0);
+        let n = self.above_ground(world, x, z + 1.0, 0.0);
+        let normal = (e - c).cross(n - c).normalize();
+        normal.dot(c.normalize()).abs().acos().to_degrees()
+    }
+
+    /// Distance from an engine-space point to the nearest patch seam at `level`, in metres
+    /// (approximate: face-space distance times the patch edge length).
+    pub fn seam_distance(&self, world: &World, level: u8, v: Vec3) -> f64 {
+        let n = (1u64 << level) as f64;
+        let (_, u, w) = face_uv(self.phys_to_body(v).normalize().to_array());
+        let frac = |t: f64| {
+            let f = ((t + 1.0) / 2.0 * n).fract();
+            f.min(1.0 - f)
+        };
+        frac(u).min(frac(w)) * world.lod.spacing(level) * world.lod.intervals as f64
+    }
+
     /// Collision patches at the finest level: a (2k+1)² block around the site, as
     /// engine-space vertices and triangles (skirts excluded).
     pub fn patches(&self, world: &World, k: i64) -> Vec<(Vec<Vec3>, Vec<[u32; 3]>)> {
-        let level = world.lod.max_level;
+        self.patches_at(world, world.lod.max_level, k)
+    }
+
+    /// As [`Site::patches`], at any level.
+    pub fn patches_at(&self, world: &World, level: u8, k: i64) -> Vec<(Vec<Vec3>, Vec<[u32; 3]>)> {
         let n = 1i64 << level;
-        let (face, cx, cy) = Self::cell(world, self.dir);
+        let (face, u, v) = face_uv(self.dir.to_array());
+        let c = |t: f64| (((t + 1.0) / 2.0) * n as f64).floor() as i64;
+        let (cx, cy) = (c(u), c(v));
         let mut out = Vec::new();
         for dy in -k..=k {
             for dx in -k..=k {

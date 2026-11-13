@@ -371,6 +371,135 @@ pub fn rays(world: &World, a: &Args) -> String {
     )
 }
 
+#[derive(Component)]
+struct TerrainTag;
+
+fn spawn_terrain_at(app: &mut App, world: &World, site: &Site, level: u8, k: i64) {
+    for (v, t) in site.patches_at(world, level, k) {
+        app.world_mut().spawn((
+            Spawned,
+            TerrainTag,
+            RigidBody::Static,
+            Collider::trimesh_with_config(v, t, TrimeshFlags::FIX_INTERNAL_EDGES),
+            Transform::default(),
+        ));
+    }
+}
+
+fn clear_terrain(app: &mut App) {
+    let w = app.world_mut();
+    let es: Vec<Entity> = w
+        .query_filtered::<Entity, With<TerrainTag>>()
+        .iter(w)
+        .collect();
+    for e in es {
+        w.despawn(e);
+    }
+}
+
+/// Character test: a kinematic capsule moved by Avian's `MoveAndSlide`.
+pub fn walk(world: &World, a: &Args) -> String {
+    use crate::walk::*;
+    let mut app = app();
+    let mut stats = WalkStats::default();
+    let sites = sites(world, a, 10);
+    for site in &sites {
+        clear(&mut app);
+        let mut coarse = false;
+        let (level, k) = block_for(world, coarse);
+        spawn_terrain_at(&mut app, world, site, level, k);
+        let start = site.above_ground(
+            world,
+            START_X,
+            0.0,
+            (CAPSULE_HALF + CAPSULE_RADIUS) as f64 + 0.05,
+        );
+        let ch = app
+            .world_mut()
+            .spawn((
+                Spawned,
+                RigidBody::Kinematic,
+                Collider::capsule(CAPSULE_RADIUS, 2.0 * CAPSULE_HALF),
+                Transform::from_translation(site.body_to_phys(start)),
+            ))
+            .id();
+        // Positive control for the snag detector: a 0.5 m step across the path at x = 0.
+        if std::env::var_os("E6_OBSTACLE").is_some() {
+            let base = site.above_ground(world, 0.0, 0.0, 0.25);
+            app.world_mut().spawn((
+                Spawned,
+                RigidBody::Static,
+                Collider::cuboid(0.5, 0.5, 20.0),
+                Transform::from_translation(site.body_to_phys(base)),
+            ));
+        }
+        for _ in 0..3 {
+            step(&mut app);
+        }
+        let mut walker = Walker::default();
+        let swap_every = (LOD_SWAP_S * HZ) as usize;
+        for i in 0..(WALK_S * HZ) as usize {
+            let swapped = a.lod_swap && i > 0 && i % swap_every == 0;
+            if swapped {
+                coarse = !coarse;
+                clear_terrain(&mut app);
+                let (level, k) = block_for(world, coarse);
+                spawn_terrain_at(&mut app, world, site, level, k);
+            }
+            let before = position(&app, ch).unwrap_or_default();
+            let vel = walker.velocity();
+            let t = Instant::now();
+            let (new_pos, grounded) = app
+                .world_mut()
+                .run_system_once(
+                    move |mas: MoveAndSlide, q: Query<(&Collider, &Transform)>| {
+                        let (c, tf) = q.get(ch).expect("character");
+                        let mut grounded = false;
+                        let out = mas.move_and_slide(
+                            c,
+                            tf.translation,
+                            tf.rotation,
+                            vel,
+                            Duration::from_secs_f64(1.0 / HZ),
+                            &MoveAndSlideConfig::default(),
+                            &SpatialQueryFilter::from_excluded_entities([ch]),
+                            |hit| {
+                                // Walkable ground: within 50° of up.
+                                if hit.normal.dot(Vec3::Y) > 0.64 {
+                                    grounded = true;
+                                }
+                                MoveAndSlideHitResponse::Accept
+                            },
+                        );
+                        (out.position, grounded)
+                    },
+                )
+                .expect("move and slide");
+            if let Some(mut tf) = app.world_mut().get_mut::<Transform>(ch) {
+                tf.translation = new_pos;
+            }
+            app.update();
+            let ms = t.elapsed().as_secs_f64() * 1000.0;
+            let after = position(&app, ch).unwrap_or_default();
+            let level = block_for(world, coarse).0;
+            let rec = crate::walk::StepRecord {
+                before,
+                after,
+                grounded,
+                jumping: walker.jumping(),
+                swapped,
+                ms,
+                level,
+            };
+            if !stats.record(world, site, &rec) {
+                break;
+            }
+            walker.after_step(grounded);
+        }
+    }
+    stats.json("avian 0.8", a.lod_swap, sites.len())
+}
+
 pub fn rest(world: &World, a: &Args) -> String {
     let mut app = app();
     let mut out = Vec::new();

@@ -305,6 +305,112 @@ pub fn rays(world: &World, a: &Args) -> String {
     )
 }
 
+#[derive(Component)]
+struct TerrainTag;
+
+fn spawn_terrain_at(app: &mut App, world: &World, site: &Site, level: u8, k: i64) {
+    for (v, t) in site.patches_at(world, level, k) {
+        let collider = Collider::trimesh_with_flags(v, t, TriMeshFlags::FIX_INTERNAL_EDGES)
+            .expect("terrain trimesh");
+        app.world_mut().spawn((
+            Spawned,
+            TerrainTag,
+            RigidBody::Fixed,
+            collider,
+            Transform::default(),
+        ));
+    }
+}
+
+fn clear_terrain(app: &mut App) {
+    let w = app.world_mut();
+    let es: Vec<Entity> = w
+        .query_filtered::<Entity, With<TerrainTag>>()
+        .iter(w)
+        .collect();
+    for e in es {
+        w.despawn(e);
+    }
+}
+
+/// Character test: Rapier's `KinematicCharacterController`, configured like the Avian walker
+/// (1 cm skin, slide, no auto-step, no ground snapping, walkable up to 50°).
+pub fn walk(world: &World, a: &Args) -> String {
+    use crate::walk::*;
+    let mut app = app();
+    let mut stats = WalkStats::default();
+    let sites = sites(world, a, 10);
+    for site in &sites {
+        clear(&mut app);
+        let mut coarse = false;
+        let (level, k) = block_for(world, coarse);
+        spawn_terrain_at(&mut app, world, site, level, k);
+        let start = site.above_ground(
+            world,
+            START_X,
+            0.0,
+            (CAPSULE_HALF + CAPSULE_RADIUS) as f64 + 0.05,
+        );
+        let ch = app
+            .world_mut()
+            .spawn((
+                Spawned,
+                RigidBody::KinematicPositionBased,
+                Collider::capsule_y(CAPSULE_HALF, CAPSULE_RADIUS),
+                Transform::from_translation(site.body_to_phys(start)),
+                KinematicCharacterController {
+                    up: Vec3::Y,
+                    offset: CharacterLength::Absolute(0.01),
+                    slide: true,
+                    autostep: None,
+                    snap_to_ground: None,
+                    max_slope_climb_angle: 50f32.to_radians(),
+                    min_slope_slide_angle: 90f32.to_radians(),
+                    ..default()
+                },
+            ))
+            .id();
+        for _ in 0..3 {
+            step(&mut app);
+        }
+        let mut walker = Walker::default();
+        let swap_every = (LOD_SWAP_S * HZ) as usize;
+        for i in 0..(WALK_S * HZ) as usize {
+            let swapped = a.lod_swap && i > 0 && i % swap_every == 0;
+            if swapped {
+                coarse = !coarse;
+                clear_terrain(&mut app);
+                let (level, k) = block_for(world, coarse);
+                spawn_terrain_at(&mut app, world, site, level, k);
+            }
+            let before = position(&app, ch).unwrap_or_default();
+            if let Some(mut c) = app.world_mut().get_mut::<KinematicCharacterController>(ch) {
+                c.translation = Some(walker.velocity() / HZ as f32);
+            }
+            let ms = step(&mut app);
+            let after = position(&app, ch).unwrap_or_default();
+            let grounded = app
+                .world()
+                .get::<KinematicCharacterControllerOutput>(ch)
+                .is_some_and(|o| o.grounded);
+            let rec = crate::walk::StepRecord {
+                before,
+                after,
+                grounded,
+                jumping: walker.jumping(),
+                swapped,
+                ms,
+                level: block_for(world, coarse).0,
+            };
+            if !stats.record(world, site, &rec) {
+                break;
+            }
+            walker.after_step(grounded);
+        }
+    }
+    stats.json("rapier 0.37", a.lod_swap, sites.len())
+}
+
 pub fn rest(world: &World, a: &Args) -> String {
     let mut app = app();
     let mut out = Vec::new();

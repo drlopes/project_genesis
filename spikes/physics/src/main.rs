@@ -11,6 +11,7 @@
 //! Engine: `--features avian` (default) or `--no-default-features --features rapier`.
 
 mod site;
+mod walk;
 
 #[cfg(feature = "avian")]
 mod avian_engine;
@@ -40,6 +41,8 @@ pub struct Args {
     pub substeps: Option<u32>,
     /// Drop-test bodies collide only with the terrain, not with each other.
     pub solo: bool,
+    /// Walk test: swap the collision block between the finest level and one coarser every 2 s.
+    pub lod_swap: bool,
 }
 
 fn args() -> Args {
@@ -72,6 +75,7 @@ fn args() -> Args {
         ccd_threshold: get("--ccd-threshold").and_then(|v| v.parse().ok()),
         substeps: get("--substeps").and_then(|v| v.parse().ok()),
         solo: a.iter().any(|x| x == "--solo"),
+        lod_swap: a.iter().any(|x| x == "--lod-swap"),
     }
 }
 
@@ -142,6 +146,7 @@ fn main() {
         "drops" => engine::drops(&world, &a),
         "rays" => engine::rays(&world, &a),
         "rest" => engine::rest(&world, &a),
+        "walk" => engine::walk(&world, &a),
         t => panic!("unknown test {t}"),
     };
     println!("{json}");
