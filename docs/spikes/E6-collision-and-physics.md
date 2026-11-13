@@ -193,8 +193,25 @@ ECS-native with an `f64` option. Rapier is better in violent body–body impacts
 has known mitigations (terrain collision margin, sweeping fast bodies against dynamic ones, a
 depenetration safety net against the field).
 
+## Character in the app (Avian)
+
+`spikes/app/src/walker.rs`; **C** toggles walking. Colliders are built from the *displayed*
+patches within 40 m of the character (collision = visual LOD, docs/18), at most 4 per frame, and
+added before old ones are removed, so a LOD change never leaves a gap. Patches within three levels
+of the finest keep a compact collision copy (~85 KB each). The character moves in a local physics
+frame anchored where walking starts; gravity follows the local radial up. The camera rides the
+character's eyes, interpolated between fixed steps. Colliders use each patch's own shape: during a
+0.5 s morph the visible surface lies between parent and own shape, so the two can briefly differ by
+the morph offset.
+
+Automated check (`spike_app --auto-walk 30`: walk forward, jump every 3 s): 198 m in 30 s,
+0 fall-through, capsule bottom 1.5 cm above the field surface at p50 (2.7 cm p99), movement step
+0.05 ms p50 / 0.07 ms p99 (physics step itself measured headless: ~0.5 ms p99).
+
+Not done in the spike: rebasing the physics frame when the character walks far from where walking
+started (the frame stays valid for kilometres on this body; a production frame rebases).
+
 ## Still to do
 
-- Character in the app with Avian (collision patches streamed from the displayed visual patches
-  near the player, in a local physics frame); the user's feel check.
+- The user's feel check.
 - Decisions and write-back to docs/18 and docs/20.

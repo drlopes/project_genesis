@@ -20,8 +20,10 @@ what cost, with no fall-through? Definition:
       no-terrain control; faster step tail; but bodies creep on mesh contacts before sleeping)
 - [x] Headless character test, both engines: 0 fall-through, 0 snags (detector verified with an
       obstacle), ~0.5 ms p99 per step; LOD swaps jolt 1–4 cm; provisional choice Avian
-- [ ] Character in the app with Avian: collision patches streamed from the displayed patches near
-      the player, local physics frame; **user** tries the feel
+- [x] Character in the app with Avian (`walker.rs`): colliders from displayed patches within 40 m,
+      4 builds/frame, add-before-remove; local physics frame; `--auto-walk` check: 198 m in 30 s,
+      0 fall-through, ground gap 1.5 cm p50 / 2.7 cm p99, move 0.07 ms p99
+- [ ] **User** tries the feel
 - [ ] Decisions; write-back to docs/18 (incl. B-004) and docs/20
 
 ## Where we stopped
@@ -31,7 +33,10 @@ the character test (walk and jump across seams and LOD changes), which decides t
 
 ## Waiting on the user
 
-_Nothing._
+1. **E6 character feel check.** From `spikes/`: `cargo run --release -p spike_app`, fly near
+   the ground, press **C** to walk (WASD, Space jump, Shift run, right mouse to look, C again to
+   fly). Judge: sinking or floating, snagging (especially at patch seams, visible with **L**),
+   jumping and landing, walking up and down hills, anything that feels wrong.
 
 ## Up next
 

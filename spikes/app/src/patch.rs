@@ -39,6 +39,30 @@ pub struct PatchMesh {
     pub build_ms: f32,
 }
 
+/// Collision source for one patch: its own shape (not morphed), encoded as in the render mesh.
+pub struct CollisionData {
+    pub origin: [f64; 3],
+    pub extent: [f32; 3],
+    pub grid: Vec<[u16; 4]>,
+    pub tris: Vec<[u16; 3]>,
+}
+
+impl CollisionData {
+    /// Body-local vertex positions (f64).
+    pub fn vertices(&self) -> impl Iterator<Item = [f64; 3]> + '_ {
+        self.grid.iter().map(|q| {
+            [0, 1, 2].map(|k| self.origin[k] + q[k] as f64 / 65535.0 * self.extent[k] as f64)
+        })
+    }
+
+    /// Centre and half-diagonal of the patch box, body-local.
+    pub fn bounds(&self) -> ([f64; 3], f64) {
+        let e = self.extent.map(|v| v as f64);
+        let c = [0, 1, 2].map(|k| self.origin[k] + 0.5 * e[k]);
+        (c, 0.5 * (e[0] * e[0] + e[1] * e[1] + e[2] * e[2]).sqrt())
+    }
+}
+
 /// Bytes per vertex of the encoded format and of the E3 float format, for the metrics.
 pub const VERTEX_BYTES: usize = 32;
 pub const FLOAT_VERTEX_BYTES: usize = 80;
@@ -58,6 +82,21 @@ impl PatchMesh {
     /// translations are f64 differences, and collision (E6) needs exact positions on large bodies.
     pub fn world(&self, q: [u16; 4]) -> [f64; 3] {
         [0, 1, 2].map(|k| self.origin[k] + q[k] as f64 / 65535.0 * self.extent[k] as f64)
+    }
+
+    /// A compact copy of what collision needs (encoded grid vertices and triangles), kept after
+    /// the render mesh is uploaded. ~85 KB per 65 × 65 patch.
+    pub fn collision_data(&self, intervals: usize) -> CollisionData {
+        let w = intervals + 1;
+        CollisionData {
+            origin: self.origin,
+            extent: self.extent,
+            grid: self.positions[..w * w].to_vec(),
+            tris: self.indices[..intervals * intervals * 6]
+                .as_chunks::<3>()
+                .0
+                .to_vec(),
+        }
     }
 
     /// Body-local positions of the grid vertices (own shape, skirts excluded) and the grid

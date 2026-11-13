@@ -11,6 +11,7 @@
 
 mod material;
 mod metrics;
+mod walker;
 
 use spike_app::{flycam, quadtree, workers};
 
@@ -66,6 +67,8 @@ struct Config {
     /// E5: body distance from the system origin, and the naive (f32 system positions) control.
     system_distance: f64,
     naive_frame: bool,
+    /// E6: walk automatically for this many seconds, report, and exit (0 = off).
+    auto_walk: f64,
 }
 
 impl Config {
@@ -138,6 +141,7 @@ impl Config {
             move_s: num("--duration", 60.0),
             system_distance: num("--system-distance", 0.0),
             naive_frame: get("--frame").is_some_and(|f| f == "naive"),
+            auto_walk: num("--auto-walk", 0.0),
         }
     }
 
@@ -180,6 +184,10 @@ struct Resident {
     /// Morph step of the material currently assigned.
     step: u8,
     shown: bool,
+    /// Collision source (patches within three levels of the finest only; E6).
+    collision: Option<Arc<spike_app::patch::CollisionData>>,
+    /// Trimesh collider entity while the walking character is near (E6).
+    collider: Option<Entity>,
 }
 
 #[derive(Resource)]
@@ -202,6 +210,8 @@ struct Terrain {
     view_mode: u32,
     last_desired: Vec<NodeId>,
     frozen: Option<Vec<NodeId>>,
+    /// Colliders of despawned patches, kept until their replacements have colliders (E6).
+    orphan_colliders: Vec<Entity>,
 }
 
 fn material_for(
@@ -291,6 +301,9 @@ fn main() {
             ..default()
         }))
         .add_plugins(TerrainMaterialPlugin)
+        // E6: physics for the walking character (no dynamic bodies; kinematic MoveAndSlide).
+        .add_plugins(avian3d::prelude::PhysicsPlugins::default())
+        .init_resource::<walker::Walking>()
         .insert_resource(ClearColor(Color::srgb(0.01, 0.01, 0.02)))
         .insert_resource(config)
         .add_systems(Startup, setup)
@@ -298,13 +311,17 @@ fn main() {
             Update,
             (
                 debug_keys,
+                walker::toggle,
                 drive_camera,
                 stream_terrain,
+                walker::stream_colliders,
                 apply_frame,
                 record_frame,
+                walker::auto_report,
             )
                 .chain(),
         )
+        .add_systems(FixedUpdate, walker::move_character)
         .run();
 }
 
@@ -394,6 +411,7 @@ fn setup(mut commands: Commands, config: Res<Config>) {
         view_mode: 0,
         last_desired: Vec::new(),
         frozen: None,
+        orphan_colliders: Vec::new(),
     });
     let now = Instant::now();
     commands.insert_resource(Run {
@@ -484,10 +502,50 @@ fn drive_camera(
     mut run: ResMut<Run>,
     mut cam: Query<(&mut Transform, &mut FlyCam, &mut BodyLocal)>,
     mut window: Query<&mut Window, With<PrimaryWindow>>,
+    walking: Res<walker::Walking>,
+    fixed: Res<Time<Fixed>>,
 ) {
     let Ok((mut tf, mut fly, mut local)) = cam.single_mut() else {
         return;
     };
+    // Walking (E6): the camera rides the character's eyes, interpolated between fixed steps.
+    if walking.active {
+        let old_up = local.0.normalize().as_vec3();
+        let eye = walking.eye(fixed.overstep_fraction());
+        if mouse.pressed(MouseButton::Right) {
+            tf.rotation = flycam::look(
+                tf.rotation,
+                old_up,
+                -motion.delta.x * 0.003,
+                -motion.delta.y * 0.003,
+            );
+        }
+        tf.rotation = flycam::transport(tf.rotation, old_up, eye.normalize().as_vec3());
+        local.0 = eye;
+        fly.frame = fly.frame.wrapping_add(1);
+        if let Ok(mut win) = window.single_mut()
+            && fly.frame % 15 == 1
+        {
+            win.title = format!(
+                "Genesis E6 | WALK {} | {:.1} m/s | colliders {} (+{} pending) | move {:.2} ms | {} | C fly · WASD · Space jump · Shift run · RMB look · G/L views",
+                if walking.grounded {
+                    "grounded"
+                } else {
+                    "airborne"
+                },
+                walking.speed_hint(),
+                walking.colliders,
+                walking.pending,
+                walking.move_ms,
+                if walking.ready {
+                    "ready"
+                } else {
+                    "waiting for colliders"
+                },
+            );
+        }
+        return;
+    }
     // Flight works in body-local coordinates; `apply_frame` turns them into render transforms.
     let cur = local.0.as_vec3();
     let now = run.start.elapsed().as_secs_f64();
@@ -539,7 +597,7 @@ fn drive_camera(
     {
         let view = ["shaded", "grey", "by level"][terrain.view_mode as usize];
         win.title = format!(
-            "Genesis E3 | alt {:.0} m | {:.0} m/s | morph {} (M) | view {} (G/L) | LOD {} (P) | RMB look · WASD · Q/E · Shift · F fly-in",
+            "Genesis E3 | alt {:.0} m | {:.0} m/s | morph {} (M) | view {} (G/L) | LOD {} (P) | RMB look · WASD · Q/E · Shift · F fly-in · C walk",
             alt,
             speed,
             if terrain.morph_on { "ON" } else { "off" },
@@ -682,6 +740,9 @@ fn stream_terrain(
         // the unit box in local space (Bevy cannot compute it: there is no float POSITION).
         let aabb = bevy::camera::primitives::Aabb::from_min_max(Vec3::ZERO, Vec3::ONE);
         let (bytes, float_bytes) = (p.bytes(), p.float_format_bytes());
+        // Collision source for patches the character can stand on (E6): the deepest levels only.
+        let collision = (p.id.level + 3 >= terrain.lod.max_level)
+            .then(|| Arc::new(p.collision_data(terrain.lod.intervals as usize)));
         terrain.mesh_bytes += bytes;
         terrain.float_format_bytes += float_bytes;
         let mut mesh = Mesh::new(
@@ -734,12 +795,15 @@ fn stream_terrain(
             morph: 0.0,
             step: 0,
             shown: false,
+            collision,
+            collider: None,
         };
         fresh.insert(p.id);
         if let Some(old) = terrain.resident.insert(p.id, resident) {
             terrain.mesh_bytes -= old.bytes;
             terrain.float_format_bytes -= old.float_bytes;
             commands.entity(old.entity).despawn();
+            terrain.orphan_colliders.extend(old.collider);
         }
     }
 
@@ -939,6 +1003,8 @@ fn stream_terrain(
             terrain.mesh_bytes -= r.bytes;
             terrain.float_format_bytes -= r.float_bytes;
             commands.entity(r.entity).despawn();
+            // Its collider stays until the replacement patches have theirs (walker.rs).
+            terrain.orphan_colliders.extend(r.collider);
         }
     }
 
