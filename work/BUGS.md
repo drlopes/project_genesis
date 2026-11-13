@@ -18,6 +18,16 @@ this goal or next · **S3** when convenient.
   hashed), then add a spikes clippy step to CI, or decide that spikes are exempt and say so in
   `AGENTS.md`.
 
+### B-006 — CI actions target the deprecated Node.js 20
+- **Severity:** S3 · **Status:** open
+- **Found:** 2026-11-13, in the CI log of `2a53255`
+- **Where:** `.github/workflows/ci.yml`: `actions/checkout@v4`, `actions/setup-node@v4`
+- **Expected:** CI runs without deprecation warnings.
+- **Actual:** GitHub forces both actions onto Node.js 24 and warns that they target Node.js 20.
+  Runs still pass. The log also notes that `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19.
+- **Fix options:** move to the current major versions of both actions; re-run E2 and the golden
+  checks on the new Ubuntu image when it lands.
+
 ## Closed
 
 ### B-001 — `rng::below` claims to be unbiased, but is not exactly
