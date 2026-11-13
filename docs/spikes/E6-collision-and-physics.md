@@ -183,15 +183,18 @@ frame is expensive in both engines: collision patch builds must be spread across
 5. Never-sleeping bodies creep on slopes; anything that must hold still while awake needs a
    kinematic or anti-creep treatment.
 
-## Provisional engine choice: Avian
+## Engine choice: Avian
 
-Equal on the character test. Avian is preferred because bodies resting on the terrain mesh stay
+Equal on the character test. Avian is chosen because bodies resting on the terrain mesh stay
 exactly still once asleep (Rapier's creep 0.3–1.5 m on mesh contacts before sleeping, which would
 show as props sliding on slopes), its worst-case step in the walking test is lower, and it is
 ECS-native with an `f64` option. Rapier is better in violent body–body impacts at the ground
 (0 versus 6 per 1 000 in the crowded 300 m/s test) and in step-time tail during them; Avian's case
 has known mitigations (terrain collision margin, sweeping fast bodies against dynamic ones, a
 depenetration safety net against the field).
+
+`DECIDED` — Avian, confirmed by the user's feel check ("works flawlessly; no glaring issues").
+Written back to [20](../20-tech-stack-and-workspace.md) and [18](../18-collision-and-edits.md).
 
 ## Character in the app (Avian)
 
@@ -227,5 +230,5 @@ started (the frame stays valid for kilometres on this body; a production frame r
 
 ## Still to do
 
-- The user's re-check of the sliding fix.
-- Decisions and write-back to docs/20.
+Nothing. E6 is closed. Open follow-ups are in the results above (body–body impact mitigation,
+physics-frame rebasing) and in [work/IDEAS.md](../../work/IDEAS.md).

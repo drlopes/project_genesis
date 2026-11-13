@@ -4,53 +4,38 @@ Rules: [work/README.md](README.md). One active goal; everything else is captured
 
 ## Active goal
 
-**E6 — Collision and physics.** Which physics crate accepts our field as terrain collision, at
-what cost, with no fall-through? Definition:
-[docs/21 E6](../docs/21-phase-1-spike-plan.md#e6--collision-and-physics).
+**E7 — Voxels.** What voxel size and region radius give believable digging within budget?
+Definition: [docs/21 E7](../docs/21-phase-1-spike-plan.md#e7--voxels).
 
-- [x] Candidates: neither crate accepts a custom field collider cleanly (Avian's `AnyCollider`
-      replaces the whole collider type; bevy_rapier exposes no contact dispatcher) → option (a),
-      per-patch triangle meshes from the visual vertices
-- [x] `spikes/physics` headless harness; `spike_app` split into lib + bin
-- [x] Avian: drops (0 fall-through terrain-only in 12 000; 6/1 000 from body–body impacts),
-      rays (5 ms/10 k vs 500 ms for the field trace; agreement 1.2 cm p99), rest (0 mm sleeping;
-      never-sleeping bodies creep on slopes, a solver property; local frame fine at Earth radius,
-      naive fails)
-- [x] Rapier: the same three tests (0 fall-through everywhere incl. without CCD, verified by a
-      no-terrain control; faster step tail; but bodies creep on mesh contacts before sleeping)
-- [x] Headless character test, both engines: 0 fall-through, 0 snags (detector verified with an
-      obstacle), ~0.5 ms p99 per step; LOD swaps jolt 1–4 cm; provisional choice Avian
-- [x] Character in the app with Avian (`walker.rs`): colliders from displayed patches within 40 m,
-      4 builds/frame, add-before-remove; local physics frame; `--auto-walk` check: 198 m in 30 s,
-      0 fall-through, ground gap 1.5 cm p50 / 2.7 cm p99, move 0.07 ms p99
-- [x] **User** feel check: mostly right, but the character never stopped sliding. Cause: a commanded
-      downward velocity while grounded, projected onto the slope. Fix: ground snap + no solver run
-      when idle; idle drift now exactly 0 over five idle phases on ground up to 20°
-- [ ] **User** re-checks the sliding fix
-- [ ] Decisions; write-back to docs/18 (incl. B-004, done) and docs/20
+- [ ] Fixed test site; scripted edits (flatten, tunnel, cliff carve, 500 small digs)
+- [ ] Voxel size 0.25 / 0.5 / 1 m; region radius 32 / 64 / 128 m; surface nets versus marching
+      cubes (start by checking which of these is worth measuring)
+- [ ] Metrics: RAM per region, edit → remesh latency, seam at the voxel/mesh boundary, largest
+      edit radius per frame, record storage per 1 000 edits, superseded-edit GC
+- [ ] Look test with **the user** from 2 m; pick the coarsest size that passes
 
 ## Where we stopped
 
-Engine chosen provisionally (Avian) and the character is in the app. The user found permanent
-sliding; fixed and verified automatically, waiting for their re-check.
+E6 closed: Avian chosen and written back; the user's walking feel check passed ("works
+flawlessly; no glaring issues"). E7 is next, following the E6 collision model it depends on.
 
 ## Waiting on the user
 
-1. **E6 sliding fix re-check.** From `spikes/`: `cargo run --release -p spike_app`, fly near the
-   ground, press **C** to walk, then **stand still on a slope with no keys pressed**. The character
-   must not creep. Judge the rest again: sinking or floating, snagging (seams visible with **L**),
-   jumping and landing, walking up and down hills.
+_Nothing._
 
 ## Up next
 
-1. **E7 — Voxels.**
-2. **E8 — Classification look**, using top-down renders.
-3. **B-001** — decide on the `rng::below` wording or rejection step before anything persistent
+1. **E8 — Classification look**, using top-down renders.
+2. **B-001** — decide on the `rng::below` wording or rejection step before anything persistent
    depends on it.
-4. **B-002** — make `spike_field` clippy-clean, or exempt spikes from linting explicitly.
+3. **B-002** — make `spike_field` clippy-clean, or exempt spikes from linting explicitly.
 
 ## Done recently
 
+- 2026-11-12 — **E6 — Collision and physics.** Avian 0.8; per-patch trimesh colliders from the
+  displayed patches; character walks and jumps across seams and LOD changes (0 fall-through,
+  0 snags, ~0.5 ms p99), stands still exactly when idle, and the user found it flawless.
+  [Results](../docs/spikes/E6-collision-and-physics.md).
 - 2026-11-12 — **E5 — Coordinate precision.** Our own camera-relative frame (f64 positions, render
   translations as f64 differences cast to f32) passes at 10¹⁰ m: emulated error ≤ 0.0014 px,
   user saw no jitter; the naive f32 control fails from 10⁶ m. No `big_space` (pre-release only).

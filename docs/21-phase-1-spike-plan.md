@@ -104,7 +104,8 @@ Run in this order: E1 and E2 need no engine and gate everything else.
 | E9 — Build iteration | **done** | static Bevy + `rust-lld`, ~6 s; [results](./spikes/E3-lod-and-quadtree.md#e9--build-iteration) |
 | E4 — Streaming throughput | **done** | pass at rover speed; full detail while speed / height ≤ ~6 /s; workers never on all cores; [results](./spikes/E4-streaming-throughput.md) |
 | E5 — Coordinate precision | **done** | own camera-relative frame passes at 10¹⁰ m; physics part moved to E6; [results](./spikes/E5-coordinate-precision.md) |
-| E6–E8 | not started | — |
+| E6 — Collision and physics | **done** | Avian 0.8; per-patch trimesh colliders from displayed patches; character passes (0 fall-through, 0 snags, ~0.5 ms p99), user felt it flawless; [results](./spikes/E6-collision-and-physics.md) |
+| E7–E8 | not started | — |
 
 ### E1 — Field cost
 

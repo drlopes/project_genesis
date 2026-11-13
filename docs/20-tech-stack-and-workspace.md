@@ -152,11 +152,30 @@ The Bevy side is a thin layer that drives the generator:
 | Content packs | Bevy assets with hot-reload; on reload, re-resolve content and rebake in the inspector |
 | Floating origin | our own camera-relative render frame (f64 positions, f32 render translations from f64 differences); `big_space` not used ([E5](./spikes/E5-coordinate-precision.md)) |
 
-Physics: collision against terrain uses **our** collision field ([18](./18-collision-and-edits.md)).
-A Bevy physics crate (Avian or Rapier) may handle rigid bodies and character movement. The choice is
-made in the Phase 1 spike, and either must accept our field as the terrain collider.
-
 `PROPOSED` — the table above. The spike validates it.
+
+Physics: collision against terrain uses **our** collision field ([18](./18-collision-and-edits.md)).
+The physics engine is **Avian 0.8** (`avian3d`, features `3d`, `parry-f32`, `xpbd_joints`,
+`parallel`), chosen in E6. Both candidates passed the character and fall-through tests; Avian wins
+because a body resting on the terrain mesh stays exactly still once asleep, where Rapier crept
+0.3–1.5 m before sleeping — visible as props sliding down slopes. Full comparison and numbers:
+[E6](./spikes/E6-collision-and-physics.md).
+
+- Terrain collision is **per-patch triangle meshes built from the displayed patch's vertices**, at
+  the visual LOD near a physics body ([collision LOD](./18-collision-and-edits.md#collision-lod)).
+  Neither crate accepts the field as a custom collider: Avian's `AnyCollider` replaces the whole
+  collider type, and `bevy_rapier` exposes no contact dispatcher.
+- Colliders are built a few per frame, and added before the old ones are removed. Rebuilding a
+  whole block at once cost 16–39 ms.
+- The character moves in a local physics frame (f64 origin, f32 inside) and stays on the ground by
+  a ground snap, never by a commanded downward velocity
+  ([walking on a heightfield](./18-collision-and-edits.md#walking-on-a-heightfield)).
+- Known limits: violent body–body impacts on the ground occasionally let a body through Avian's
+  terrain (6 per 1 000 at 300 m/s); dynamic bodies creep ~0.4–1.0 m on mesh contacts if never
+  allowed to sleep. Mitigations are listed in E6.
+- The generator crates never depend on the physics crate, as with Bevy (D42).
+
+`DECIDED` — Avian, from E6 (measured, plus the user's feel check).
 
 ---
 

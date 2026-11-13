@@ -6,6 +6,14 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 
 ## [Unreleased]
 
+### Changed
+- **Physics engine decided: Avian 0.8** (docs/20), from E6: both candidates passed, Avian keeps
+  resting bodies exactly still on terrain meshes. Terrain collision is per-patch triangle meshes
+  built from the displayed patches, a few per frame; the character walks in a local physics frame.
+  docs/18 now specifies walking on a heightfield (ground snap, no movement without input, 50°
+  walkable limit, LOD changes move a standing character only along the up axis).
+- E6 closed: the user's feel check passed ("works flawlessly; no glaring issues").
+
 ### Fixed
 - E6: the walking character slid downhill forever, even with no input. It commanded a downward
   velocity while grounded, which the slide query projected onto the slope. Contact now uses a ground
