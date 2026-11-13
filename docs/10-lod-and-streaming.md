@@ -298,17 +298,25 @@ The overlap and seam-tolerance contract for the boundary is in
   3 MB of mesh, ~143 k triangles; a dig remeshes in 23–31 ms (single-threaded).
 - **Edits persist as records** and are replayed; GC and the full boundary contract are in
   [18](./18-collision-and-edits.md#the-voxelmesh-boundary).
-- Building a whole region is the slow part (~33 ms per brick, 4.2 s for ±64 m single-threaded): it
-  runs on the generation workers, nearest bricks first.
+- Building bricks is the slow part (~33 ms each): it runs on the generation workers, and only for
+  edited chunks (below).
 
-`PROPOSED` — **voxelise on first edit.** Unedited voxel terrain and the heightfield agree within
-2 cm (E7), so the voxels add nothing until something edits a chunk. A chunk would switch from
-heightfield to voxels on its first edit, together with the neighbours whose mesh reads its
-samples; arrival would cost nothing and RAM would scale with what was edited, not with the
-radius. This narrows D27's "voxels near the player" to "voxels where edited, near the player".
-The new piece is the heightfield giving up edited chunk footprints at runtime (the cut rule in
-[18](./18-collision-and-edits.md#the-voxelmesh-boundary) applies). Tracked as I-014; needs the
-user's agreement.
+`DECIDED` (2026-11-13, I-014, refines D27) — **voxelise on first edit.** Unedited voxel terrain
+and the heightfield agree within 2 cm (E7), so voxels add nothing until something edits a chunk.
+Unedited ground near the player stays heightfield. A chunk switches to voxels on its first edit,
+together with the neighbours whose mesh reads its samples. D27's "voxels near the player" now
+means **"voxels where edited, near the player"**; the ±64 m region is the limit on where edits
+can be made and where voxels stay resident, not a volume that is always built.
+
+- **Why:** arriving somewhere costs no voxel build (a full ±64 m region is 4.2 s single-threaded),
+  so fast travel near the surface is limited only by heightfield streaming (E4). RAM scales with
+  what was edited.
+- **Cost:** ~33 ms per brick at the first edit of a chunk, on top of the remesh. The heightfield
+  gives up edited chunk footprints at runtime, and so do the collision patches; the cut follows
+  the rule in [18](./18-collision-and-edits.md#the-voxelmesh-boundary) (it may only cut
+  single-valued surface).
+- **Saved sites:** a chunk with records is voxelised from its records when it becomes resident
+  (replay ~0.1 ms per record).
 
 Not decided: a coarser voxel LOD for distant resident regions (the user found 1 m acceptable only
 from far away, as a LOD) — I-013.

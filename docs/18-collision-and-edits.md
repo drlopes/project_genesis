@@ -371,7 +371,7 @@ contract that makes it seam-free.
 | | Value | Why |
 |---|---|---|
 | Voxel size | **0.5 m** | coarsest size that passed the user's look test from 2 m; 1 m reads as broken terrain |
-| Region | **±64 m** around the player (128 × 128 m, band from 8 m below the ground to 2 m above) | 17 MB samples + 3 MB mesh; ±128 m fits in RAM but takes 15 s to build single-threaded |
+| Region | **±64 m** around the player (128 × 128 m, band from 8 m below the ground to 2 m above): the extent edits can reach, built only where edited | 17 MB samples + 3 MB mesh if fully built; ±128 m fits in RAM but takes 15 s to build single-threaded |
 | Storage | bricks of 32³ f32 samples (128 KB), one per chunk; samples are global, stored once | |
 | Seam | max 20 mm measured against 250 mm tolerance | |
 | Remesh | ~2.8 ms per chunk; a dig dirties 8–12 chunks, 23–31 ms single-threaded (limit 50 ms) | |
@@ -390,7 +390,9 @@ Rules that came out of E7:
   that brick is filled from the field first.
 - **An edit dirties every chunk that reads the samples it changed**, including the neighbours below
   on each axis whose apron covers them (local indices 0 and 1).
-- `PROPOSED` — voxelise on first edit: see [10](./10-lod-and-streaming.md#voxels-vs-heightfield).
+- **Voxels exist only where edited** (`DECIDED`, I-014): a chunk switches from heightfield to
+  voxels on its first edit, with the neighbours that read its samples; see
+  [10](./10-lod-and-streaming.md#voxels-vs-heightfield).
 
 ---
 

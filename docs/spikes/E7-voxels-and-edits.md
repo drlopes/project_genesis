@@ -138,12 +138,13 @@ the look; kept as a reference and a debug view (**B** in the viewer).
 - **Region radius: ±64 m** default. ±128 m fits in RAM (59 MB) and the remesh limit, but its full
   build takes 15 s single-threaded; see the proposal below.
 - **Edits persist as records** (66 B each); GC as above.
-- `PROPOSED` (docs/10, I-014): **voxelise on first edit.** The unedited voxel surface and the
-  heightfield agree within 2 cm, so a chunk only needs voxels once something edits it (plus the
-  neighbours its mesh reads). Arrival then costs nothing, and RAM scales with what was edited, not
-  with the radius. Bricks allocated on demand already work (the edit path does it); what is new is
-  the heightfield giving up chunk footprints at runtime. Needs the user's agreement, since it
-  changes D27's "voxels near the player" to "voxels where edited".
+- **Voxelise on first edit** (I-014; accepted by the user 2026-11-13, written into docs/10 and
+  docs/18). The unedited voxel surface and the heightfield agree within 2 cm, so a chunk only needs
+  voxels once something edits it (plus the neighbours its mesh reads). Arrival then costs nothing,
+  and RAM scales with what was edited, not with the radius. Bricks allocated on demand already work
+  (the edit path does it); what is new is the heightfield giving up chunk footprints at runtime.
+  This refines D27's "voxels near the player" to "voxels where edited". The user's reason: fast
+  movement near the surface, such as racing (I-015), must not wait on terrain builds.
 
 ## Bugs found and fixed during E7
 

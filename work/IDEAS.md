@@ -173,7 +173,7 @@ they are not acted on directly.
 - **Decision:** captured; revisit when bases exist.
 
 ### I-014 — Voxelise on first edit
-- **Status:** new → proposed in docs/10, waiting on the user
+- **Status:** accepted → docs/10 and docs/18 (2026-11-13, the user: "That's the better way")
 - **Raised:** 2026-11-13, from E7
 - **What:** keep heightfield patches for unedited ground everywhere, including near the player; a
   chunk switches to voxels on its first edit, together with the neighbours whose mesh reads its
@@ -184,7 +184,29 @@ they are not acted on directly.
 - **Cost / risk:** the heightfield must give up edited chunk footprints at runtime (a hole in the
   patch mesh, or patch-level masking), with the non-radial enclosure rule of docs/18 applied at
   that cut; the collision patches change the same way. Narrows D27 ("voxels near the player").
-- **Decision:** proposed in docs/10; needs the user's agreement.
+- **Decision:** accepted 2026-11-13; refines D27 ("voxels where edited, near the player"). The
+  user's reason: fast movement near the surface (I-015) must not wait on terrain builds.
+
+### I-015 — Races near the surface: starships and ground/hover vehicles
+- **Status:** new
+- **Raised:** 2026-11-13, by the user (a gameplay idea for later)
+- **What:** races of starships and ground or hovering vehicles close to a planet's surface.
+- **Why it matters for the engine now:** terrain must keep up at high speed and low height. E4's
+  limit is full detail while **speed ÷ height above ground ≤ ~6 /s** (4 workers, reference
+  hardware): a hover racer at 5 m keeps full detail up to ~30 m/s, a ship at 50 m up to ~300 m/s.
+  Above that, terrain degrades to coarser detail (never holes), which at racing heights is
+  visible and also coarsens collision. Voxels on first edit (I-014) keeps voxel builds out of this
+  path; heightfield streaming is the limit that remains.
+- **Options:** (a) a race course is known in advance, and generation is deterministic, so the
+  corridor along the track can be generated before the race and kept resident (prefetch along a
+  path, not around the camera); (b) view-dependent LOD (I-004): racers look forward, so spend less
+  behind and to the sides; (c) coverage-first priority (I-008); (d) more workers on bigger
+  machines; (e) design speeds and heights to the cap (hover racers fly higher at top speed).
+- **Cost / risk:** (a) is cheap for authored or seeded tracks and is the likely answer; free-roam
+  racing at low height needs (b)–(d) and new measurements. Physics at racing speed needs swept
+  contacts (E6 found fall-through only above ~150 m/s, from body–body impacts).
+- **Decision:** captured; revisit when vehicles are designed. Keep it in mind for any choice that
+  adds work on the terrain streaming path.
 
 ## Closed
 

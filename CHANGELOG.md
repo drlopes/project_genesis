@@ -12,7 +12,10 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
   records and replayed. docs/18 gains the chunk ownership and winding rules, on-demand bricks,
   dirty-set rule, the record-based persistence and GC policy, and the rule that non-radial solids
   must be enclosed by a voxel region. docs/10, docs/14, docs/16, docs/21 updated.
-- docs/10 proposes voxelising only on first edit (I-014), pending the user's decision.
+- **Voxels only where edited** (I-014, accepted; refines D27): unedited ground near the player stays
+  heightfield, and a chunk switches to voxels on its first edit. Keeps voxel builds off the path of
+  fast movement near the surface. New idea I-015: races near the surface, and what they need from
+  terrain streaming.
 - **Physics engine decided: Avian 0.8** (docs/20), from E6: both candidates passed, Avian keeps
   resting bodies exactly still on terrain meshes. Terrain collision is per-patch triangle meshes
   built from the displayed patches, a few per frame; the character walks in a local physics frame.

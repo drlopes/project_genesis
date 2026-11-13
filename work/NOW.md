@@ -20,8 +20,7 @@ records. E8 is the last Phase 1 experiment.
 
 ## Waiting on the user
 
-- **I-014 — voxelise on first edit** (proposed in docs/10): keep the heightfield for unedited
-  ground near the player and switch a chunk to voxels on its first edit. Agree, reject, or park.
+_Nothing._
 
 ## Up next
 

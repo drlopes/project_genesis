@@ -37,7 +37,7 @@ Keep it current. An out-of-date decision log is worse than none.
 | D24 | `waterBody` (marine/freshwater/brine/hydrocarbon/ammonia/subsurface) is part of the hydrosphere | [05](./05-climate-and-hydrosphere.md), [15](./15-aquatic-environments.md) |
 | D25 | Underwater is a first-class environment, equal in weight to the surface | [00](./00-vision.md), [15](./15-aquatic-environments.md) |
 | D26 | Freeze coarse decisions, migrate detail, never regenerate under a player | [03](./03-planet-descriptor.md#versioning-and-regeneration), [16](./16-data-contracts.md#frozen-derived-and-cached) |
-| D27 | Voxel strategy: voxels near, mesh at distance, one source of truth; resolution is empirical | [10](./10-lod-and-streaming.md) |
+| D27 | Voxel strategy: voxels near, mesh at distance, one source of truth; resolution is empirical (refined by D44: voxels only where edited) | [10](./10-lod-and-streaming.md) |
 | D28 | Content is declarative data: single-parent `extends`, typed suite parameters, overlays as a separate type resolved at bake | [17](./17-biome-and-landform-format.md), [16](./16-data-contracts.md) |
 | D29 | Every geometry-producing entry declares `feature_scale`; LOD bands derive from it | [16](./16-data-contracts.md#lod-and-feature-metadata), [10](./10-lod-and-streaming.md) |
 | D30 | Collision samples the same final field; water is analytic and never a solid; waves never move the gameplay waterline | [18](./18-collision-and-edits.md#collision), [09](./09-surface-field-stack.md) |
@@ -54,7 +54,7 @@ Keep it current. An out-of-date decision log is worse than none.
 | D41 | Biome borders use axis-value jitter, not positional domain warp; patchiness comes from a per-family mosaic prior | [19](./19-biome-classification.md#2-jitter), [09](./09-surface-field-stack.md#domain-warping) |
 | D42 | Rust + Bevy (pinned 0.20), PC only; the generator crates never depend on Bevy | [20](./20-tech-stack-and-workspace.md) |
 | D43 | Generation is bit-identical across platforms: `libm` maths, in-house hash/RNG/noise, ordered iteration, golden tests on Windows and Linux | [20](./20-tech-stack-and-workspace.md#determinism-rules), [11](./11-determinism-and-sampling.md) |
-| D44 | Voxels: 0.5 m, ±64 m region, surface nets, 32³ bricks; volume edits persist as records and are replayed (E7) | [10](./10-lod-and-streaming.md#voxels-vs-heightfield), [18](./18-collision-and-edits.md#the-voxelmesh-boundary) |
+| D44 | Voxels: 0.5 m, ±64 m region, surface nets, 32³ bricks, built only where edited; volume edits persist as records and are replayed (E7, I-014) | [10](./10-lod-and-streaming.md#voxels-vs-heightfield), [18](./18-collision-and-edits.md#the-voxelmesh-boundary) |
 
 ---
 
@@ -71,9 +71,9 @@ See [03](./03-planet-descriptor.md#versioning-and-regeneration) and
 ### Q2 — Voxel resolution and the mesh boundary
 **Resolved by E7 (2026-11-13) → D44.** Voxel size 0.5 m, a ±64 m region, surface nets, and
 volume edits stored as records and replayed; see the
-[E7 results](./spikes/E7-voxels-and-edits.md). Still open nearby: voxelising only on first edit
-(I-014, proposed), a coarser voxel LOD for distant regions (I-013), and the compaction thresholds,
-which belong to Q12.
+[E7 results](./spikes/E7-voxels-and-edits.md). Voxels exist only where edited (I-014, accepted
+2026-11-13), which refines D27. Still open nearby: a coarser voxel LOD for distant regions
+(I-013), and the compaction thresholds, which belong to Q12.
 
 The strategy was settled first (D27): voxels near the player, heightfield/mesh at distance, one
 source of truth, and a boundary defined by distance and editability. The numbers came from a
