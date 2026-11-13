@@ -5,7 +5,7 @@ Rules: [work/README.md](README.md). One active goal; everything else is captured
 ## Active goal
 
 **E7 — Voxels.** What voxel size and region radius give believable digging within budget?
-Definition: [docs/21 E7](../docs/21-phase-1-spike-plan.md#e7--voxels).
+Definition: [docs/21 E7](../docs/21-phase-1-spike-plan.md#e7--voxels-and-edits-q2).
 
 - [ ] Fixed test site; scripted edits (flatten, tunnel, cliff carve, 500 small digs)
 - [ ] Voxel size 0.25 / 0.5 / 1 m; region radius 32 / 64 / 128 m; surface nets versus marching
