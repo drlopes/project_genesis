@@ -7,6 +7,11 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 ## [Unreleased]
 
 ### Changed
+- docs/03, 04, 05, 06, 09, 11, 13, 14, 20 record the P1-A bake. Decided: the identity hash and its
+  canonical encoding. Proposed: the bake's numbers, soft-Voronoi plates, craters kept out of the
+  macro pyramid (which departs from a docs/06 `DECIDED` line; awaiting the user), and the
+  sea-level solve on a 6 × 64² area-weighted grid. docs/03's `state` enum spells `vapour`, as
+  docs/05 does.
 - **Classification look defaults decided (E8)**: *k* 4 and jitter 1× confirmed; mosaic strength
   **0.35 → 0.9**. docs/19 now records the mosaic noise's measured range (one field sd 0.27, a
   two-field difference sd 0.38) and the rule that sizes mosaic strength against the palette
@@ -49,6 +54,17 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
   culling boxes cover both morph shapes.
 
 ### Added
+- **`genesis_gen`** (P1-A): the first production bake. `bake_core(SeedChain, &RockyParams)` writes
+  identity, bulk, rotation, ocean fraction, geology (plates, craters, hypsometry) and the sea
+  level; every other block is an explicit `null`. `bake_caches` builds the macro pyramid
+  (6 × 129², 390 KB) and the crater index. The L0 relief uses soft-Voronoi plates, so heights are
+  continuous at triple junctions (tested by walking great circles in 10 m steps). The identity
+  hash is our own canonical binary encoding; ten golden seeds are pinned, checked on Windows and
+  Linux in debug and a new release CI step.
+- **`genesis_cli`**, binary `genesis`: `genesis descriptor --seed N [--region --system --body]
+  [--compact]` prints the descriptor core as JSON, with hash, sizes and timings on stderr.
+  docs/14's Phase 0 exit (create a body from a seed and inspect it) is met.
+- Workspace dependencies `serde`, `serde_json`, `thiserror` (identity never depends on them).
 - `spikes/field` `e8` binary (E8): top-down biome maps (separated and `--overlap` content), border
   width, patch sizes, mosaic noise statistics, and L2 cost per setting. `Body::jitter` scales the
   jitter amplitudes (exactly 1.0 by default; E2 hash unchanged) and

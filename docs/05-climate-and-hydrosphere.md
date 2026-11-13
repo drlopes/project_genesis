@@ -452,6 +452,21 @@ This single mechanism gives you:
 
 `DECIDED` — sea level is derived from ocean fraction + hypsometry, not dialled directly.
 
+The solve as implemented in `genesis_gen` (P1-A, `PROPOSED` numbers):
+
+- Evaluate `h0` at the centres of a 6 × 64 × 64 cube-sphere cell grid, band-limited to the cell
+  size, each cell weighted by its solid angle (gnomonic cells are not equal-area:
+  `dΩ ≈ Δu Δv / (1 + u² + v²)^{3/2}`).
+- Sort by height (stable, so ties keep grid order) and walk the cumulative area to the target;
+  the sea surface is midway between that cell and the next one up. `seaRadius = radius + level`.
+- The descriptor stores the curve as 21 area quantiles (0 %, 5 %, …, 100 %) and the mean.
+- Accuracy: on an independent 96 × 96 grid, the area below the sea matches `oceanFraction` within
+  0.001 for the test seeds.
+- `oceanFraction` is drawn per body as `clamp(0.55 + 0.25 · N(0, 1), 0, 0.95)` (docs/02's default
+  profile `water_fraction`); below 0.02 the body is dry (`state = none`, `seaRadius = null`).
+  `waterInventory` and the derived `state` wait for the energy and atmosphere phases; until then
+  `state` is `liquid` when there is a sea.
+
 ### Ice
 
 Water can be ice rather than liquid. Ice sheets, polar caps, and frozen oceans are just the same

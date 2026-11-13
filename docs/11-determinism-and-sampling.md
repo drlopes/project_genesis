@@ -244,6 +244,14 @@ Golden hashes are checked in CI on **Windows and Linux**, in release and debug b
 [E2](./spikes/E2-determinism.md) established the pattern and confirmed that generation is
 bit-identical across threads, evaluation order, build profile, and OS.
 
+In production (P1-A): `crates/genesis_gen/tests/golden.rs` pins the descriptor hash of body 0 for
+E2's ten seeds. Only rocky bodies exist so far, so the set is not yet the representative list
+above; worlds of the other kinds join it as their generators arrive. The test also asserts
+`GENERATOR_VERSION`, so a version bump forces a deliberate re-pin. Bake phases draw from the
+registered subsystem tags `bulk`, `hydrosphere` and `geology`, and the feature seeds
+`H(geologySeed, "plate", i)` and `H(geologySeed, "crater", i)`. Purposes used inside them are
+listed in `genesis_gen::bake`.
+
 ---
 
 ## Save and version policy

@@ -175,7 +175,9 @@ Build in this order. Each step de-risks the next.
 - Implement the seed chain and counter-based RNG ([11](./11-determinism-and-sampling.md)).
 - Implement the planet inspector skeleton: seed → descriptor tree ([12](./12-authoring-and-tuning.md)).
 
-**Exit:** you can create a body from a seed and inspect its descriptor.
+**Exit:** you can create a body from a seed and inspect its descriptor. **Met 2026-11-13 (P1-A)**:
+`genesis descriptor --seed N` bakes a rocky body and prints its descriptor core as JSON. The
+inspector is that CLI dump for now; the Bevy + egui inspector comes later.
 
 ### Phase 1 — One planet, end to end
 - Implement `rocky` macro geology (plates + craters) at low resolution.

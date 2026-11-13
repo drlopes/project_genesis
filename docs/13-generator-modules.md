@@ -149,6 +149,14 @@ identity → bulk → energy → atmosphere → water inventory → geology
 → caches
 ```
 
+Implemented in `genesis_gen` (P1-A): identity → bulk (with rotation) → water inventory (ocean
+fraction only) → geology → coarse relief → hydrosphere completion (sea level; no lakes yet) →
+caches (macro pyramid, crater index). Every other block is present and `null`, so the "required
+blocks" test (bake test 3) checks only the phases that exist; `climate`, `regions`,
+`palette/suites` and `labels` are required for `rocky` and come with later goals. `SeedChain` is
+`{ galaxy seed, region, system, body }`; `Params` is `RockyParams` (class defaults, see
+[04](./04-physical-parameters.md#the-axes)); `systemProfile` and `content` are not inputs yet.
+
 Optional branches are not special cases: no atmosphere sets `atmosphere.present = false`; no water
 sets `hydrosphere.state = "none"` and skips lakes; no biosphere sets `biosphere.level = "none"` and
 the biome layer falls back to barren/geological suites.

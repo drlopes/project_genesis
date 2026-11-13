@@ -139,7 +139,7 @@ part is the **shape**. A representative schema:
   "hydrosphere": {
     "waterInventory": 0.62,      // fraction of surface able to hold water
     "oceanFraction": 0.48,       // target fraction covered by water
-    "state": "liquid",           // liquid | ice | mixed | vapor | none
+    "state": "liquid",           // liquid | ice | mixed | vapour | none
     "waterBody": "marine",       // marine | freshwater | brine | hydrocarbon | ammonia | subsurface
     "seaRadius": 24040.0,        // absolute radius of sea level (metres from centre)
     "salinity": 0.03,
@@ -406,6 +406,15 @@ only. A missing cache is rebuilt from the core; it never changes identity. The w
 is one of these caches: it is computed from the sea/lake mask and sampled by L1.
 
 `DECIDED` — core and caches are separate outputs; only the core is hashed and saved as identity.
+
+`DECIDED` (P1-A, approved by the user 2026-11-13) — **the identity hash is over our own canonical
+binary encoding**, never over JSON or any serialisation crate's output, so no dependency upgrade
+can change world identity (docs/20 rule 2). The encoding writes every core field in declaration
+order: little-endian integers, floats as their IEEE-754 bits, strings as a `u32` length plus
+UTF-8, an option as a tag byte, a list as a `u32` count plus its items; a block that is not baked
+yet is a single `0` byte. The hash is `mix64(FNV-1a-64(bytes))` (`genesis_core::seed`). JSON (via
+`serde`) is for inspection and tools only. Golden hashes pin ten seeds in `genesis_gen`'s
+`tests/golden.rs`, checked on Windows and Linux, debug and release.
 
 ---
 

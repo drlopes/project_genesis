@@ -44,6 +44,21 @@ Bulk and composition are special: they determine the **body class** and therefor
 generator runs (see [13](./13-generator-modules.md)). Everything else tunes the output of that
 generator.
 
+`PROPOSED` (P1-A, the `rocky` class defaults in `genesis_gen::RockyParams`; they move to content
+data with `genesis_content`). Uniform draws unless noted, each from the `bulk` seed:
+
+| Parameter | Range | Note |
+|---|---|---|
+| radius | 16–32 km | Q4 still open; E3 ran 8 / 24 / 40 km |
+| gravity | 0.2–0.6 g | authoritative (docs/16) |
+| mass | `gravity · g₀ · radius² / G` | a placeholder until orbits exist; may then be tuned for orbits and tides |
+| day length | 300–1800 s | game seconds |
+| obliquity | 0–40° | |
+| tidal lock | `null` | needs the orbit phase |
+
+Per-region stratified sampling (docs/11) waits for the system bake: a body baked alone draws
+independently.
+
 ---
 
 ## Body class vs derived label

@@ -47,6 +47,11 @@ jobs:
       - name: Tests
         run: cargo test --workspace --locked
 
+      # Golden descriptor hashes (docs/11, docs/20 rule 6): the debug run is part of the tests
+      # above; release optimisations must not change world identity either.
+      - name: Golden descriptors (release)
+        run: cargo test --release --locked -p genesis_gen --test golden
+
       # Cross-platform determinism (docs/20 rule 6, spike E2): both OSes must reproduce the
       # hashes recorded on the reference Windows machine, in release and debug builds.
       - name: E2 determinism (release)

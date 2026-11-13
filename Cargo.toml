@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/genesis_core"]
+members = ["crates/genesis_core", "crates/genesis_gen", "crates/genesis_cli"]
 
 [workspace.package]
 edition = "2024"
@@ -11,6 +11,11 @@ publish = false
 # Generation-affecting: a version change is a potential generatorVersion change.
 # See docs/20-tech-stack-and-workspace.md#upgrade-policy.
 libm = "0.2"
+
+# Not generation-affecting: descriptor identity is our own canonical encoding, never serde's.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

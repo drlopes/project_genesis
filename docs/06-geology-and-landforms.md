@@ -44,6 +44,15 @@ first noise pass. It is not noise; it is a structural field derived from the pla
 `PROPOSED` — a simplified plate model is enough. Full plate simulation is out of scope; what
 matters is that mountain belts and trenches are *where boundaries are*, not random blobs.
 
+As baked in `genesis_gen` (P1-A, `PROPOSED` numbers, all in `RockyParams`): 5–12 plates with seed
+points uniform on the sphere, each continental with probability 0.4, rotating about a random Euler
+pole at a speed of 0.5–1. Boundaries come from relative motion at each point, so one boundary can
+change from convergent to transform to divergent along its length. Heights, metres, at full
+tectonic activity: continental base +500, oceanic −1000; convergent belts 1800
+(continental–continental), 1300 (mixed), 900 (oceanic–oceanic); rifts −700. The layout is
+domain-warped (3 km amplitude, 15 km wavelength) and blended as a soft Voronoi so the height is
+continuous at junctions; the formula is in [09](./09-surface-field-stack.md#analytic-deltas).
+
 ### Activity
 
 `tectonicActivity` scales relief amplitude and the freshness of features. Old worlds (Ancient
@@ -81,6 +90,25 @@ resolution and refined at query time.
 `DECIDED` (from [E1](./spikes/E1-field-cost.md)) — the query-time crater term uses a **spatial
 index** (cube-sphere cells listing the craters whose influence radius overlaps them). A linear scan
 of only 48 craters was already half of `h0`'s cost, and an ancient world has thousands.
+
+As baked in `genesis_gen` (P1-A, `PROPOSED` numbers):
+
+- **Provinces are the plates**: each plate has a surface age (oceanic 0–0.5, continental 0.3–1).
+- **Attempts**: 0.04 per km² of surface (290 on a 24 km body), each at a uniform position, with
+  rim radius from the cumulative power law `N(> r) ∝ r^−2` on 150 m … min(3 km, radius / 6). An
+  attempt is kept with probability equal to the age of the plate it lands on, and rejected if an
+  earlier crater of similar size (ratio > 0.5) has its centre closer than `0.6 · (r1 + r2)`; small
+  craters inside large ones are allowed. Attempt `i` always draws from `H(geologySeed, "crater",
+  i)`, so the list is append-only.
+- **Depth** 0.15 × rim radius; profile as in [09](./09-surface-field-stack.md#analytic-deltas).
+- **Index**: 6 × 16 × 16 cells, each listing in ascending order the craters whose influence
+  (2 × rim radius) can reach it. The indexed sum is bit-identical to the full sum (tested).
+
+`PROPOSED` (P1-A) — craters are **not** in the macro pyramid: the query adds them analytically at
+every LOD through the index, and the bake includes them when it evaluates the hypsometry. This
+departs from the `DECIDED` line above ("baked into the macro field at low resolution"). A crater
+smaller than the pyramid spacing (~375–470 m) could not be baked into it anyway, and one source
+per term keeps bake and query additive (docs/09). Needs the user's confirmation.
 
 ---
 

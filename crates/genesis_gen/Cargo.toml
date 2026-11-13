@@ -1,0 +1,18 @@
+[package]
+name = "genesis_gen"
+version = "0.1.0"
+description = "Body bake (DescriptorCore + caches) and, later, the surface query. No Bevy."
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+genesis_core = { path = "../genesis_core" }
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

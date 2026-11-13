@@ -67,7 +67,7 @@ Worker work is a **throughput** target (E4). Per-frame budgets apply only to the
 | Total process RAM | ≤ 6 GB (fits a 16 GB machine) | ~0.43 GB, terrain-only spike ([E3](./spikes/E3-lod-and-quadtree.md)) |
 | Full L0–L4 sample, single thread | ≤ 4 µs | 1.18 µs ([E1](./spikes/E1-field-cost.md)) |
 | L0–L2 sample, single thread | ≤ 1 µs | 1.05 µs at palette 16 ([E1](./spikes/E1-field-cost.md)); 0.89–0.92 µs at palette 8 for every *k* / mosaic / jitter setting ([E8](./spikes/E8-classification-look.md)) |
-| Body bake (core + caches) | ≤ 2 s on worker threads | 62 ms, 1 thread, pyramid + caches ([E1](./spikes/E1-field-cost.md)) |
+| Body bake (core + caches) | ≤ 2 s on worker threads | 62 ms, 1 thread, pyramid + caches ([E1](./spikes/E1-field-cost.md)); production `genesis_gen` (P1-A): core ~28 ms + caches ~57 ms, 1 thread, release (30.9 km body, 12 plates, 282 craters) |
 | Edit → remesh visible | ≤ 50 ms | 0.5 m voxels: a dig remeshes 8–12 chunks in 23–31 ms, 1 thread; a chunk's first edit adds ~33 ms per brick to voxelise it ([E7](./spikes/E7-voxels-and-edits.md)) |
 | Incremental build + launch after a one-line change in `genesis_gen` | ≤ 15 s | build 6.0–6.3 s with `rust-lld`, field crate as stand-in; launch not measured ([E9](./spikes/E3-lod-and-quadtree.md#e9--build-iteration)) |
 | Incremental build + launch after a one-line change in the Bevy app crate | ≤ 20 s | build 6.0–6.3 s with `rust-lld`; launch not measured ([E9](./spikes/E3-lod-and-quadtree.md#e9--build-iteration)) |

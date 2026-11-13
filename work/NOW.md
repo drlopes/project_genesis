@@ -4,29 +4,38 @@ Rules: [work/README.md](README.md). One active goal; everything else is captured
 
 ## Active goal
 
-_None._ The Phase 1 spike is complete; the next goal is the user's choice (below).
+_None._ P1-A is done; the next goal is the user's choice (see Up next).
 
 ## Where we stopped
 
-E8 closed: the user picked *k* 4, mosaic 0.9, jitter 1×. All nine experiments are recorded and
-written back; docs/21's exit criteria are met. The rest of Phase 1 (docs/14 roadmap) is production
-code: macro geology, sea level, the quadtree, collision, and flying from orbit to the ground.
+P1-A done: `genesis_gen` bakes a rocky body's descriptor core, `genesis descriptor --seed N`
+prints it, golden hashes are pinned in CI. docs/14's Phase 0 exit is met.
 
 ## Waiting on the user
 
-- **The next goal.** Recommended: B-001 first (it must be settled before production code depends
-  on `rng::below`), then start Phase 1 production with `genesis_gen`: the field stack ported from
-  the spike under the decided numbers.
+- **Craters out of the macro pyramid** (docs/06): the query adds them analytically at every LOD
+  through the crater index instead of baking them into the pyramid as a `DECIDED` line says.
+  Confirm or reject.
+- **Soft-Voronoi plates** (docs/09, `PROPOSED`): the replacement for the nearest-boundary formula,
+  which makes walls at triple junctions. Confirm or reject.
+- **The next goal**: `genesis_content` (recommended, see Up next).
 
 ## Up next
 
-1. **B-001** — decide on the `rng::below` wording or rejection step before anything persistent
-   depends on it.
+1. **`genesis_content`** — content schemas and pack loading, then palette and suite selection in
+   the bake.
 2. **B-002** — make `spike_field` and `spike_voxel` clippy-clean, or exempt spikes from linting
    explicitly.
 
 ## Done recently
 
+- 2026-11-13 — **P1-A — Descriptor bake for a rocky body.** `genesis_gen`: bulk + rotation, ocean
+  fraction, plates (soft Voronoi, continuous at junctions), craters (age provinces, power-law
+  sizes, Poisson-disk, index), coarse relief, sea level from hypsometry (within 0.001 of the
+  target area), macro pyramid and crater index caches; 12 KB core, ~30 ms bake + ~60 ms caches.
+  Canonical encoding + identity hash, ten golden seeds on Windows/Linux, debug/release.
+  `genesis descriptor --seed N`. Erosion, lakes and every other phase deferred (explicit nulls).
+- 2026-11-13 — **B-001 fixed**: `rng::below` is exactly unbiased (Lemire rejection).
 - 2026-11-13 — **E8 — Classification cost and look.** *k* 4, mosaic **0.9** (was 0.35: the
   weaker of two equally suitable families never formed patches, because the mosaic noise spans
   ~1/3 of its nominal range and palette weights differ by ~1.5×), jitter 1×; L0–L2 ~0.9 µs.

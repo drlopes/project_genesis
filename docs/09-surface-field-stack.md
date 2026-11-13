@@ -183,6 +183,13 @@ but never change its shape.
 macroHeight(p, lod) = pyramid.sample(p, interpolation(lod))
 ```
 
+The pyramid holds `macroHeight` only: the plate base elevations (soft-blended) plus the macro
+noise, band-limited to the node spacing. Plate boundaries and craters are not in it; they are the
+analytic deltas below. `PROPOSED` (P1-A): 6 × 129 × 129 corner-aligned nodes (390 KB; node
+spacing at a face centre 375 m on a 24 km body, 470 m on 30 km), bilinear. Corner-aligned nodes repeat along shared face edges with the
+same value, so bilinear sampling is continuous across faces. Pyramid + deltas track the analytic
+field within 2.4–4.8 m p99 (`genesis_gen` test `cached_h0_tracks_the_analytic_field`).
+
 ### Analytic deltas
 
 The coarse grid cannot represent a crisp ridge or trench, so the unresolved part of L0 is added
@@ -190,15 +197,32 @@ analytically at query time. The bake computes the same terms from the same seeds
 and the deltas are consistent.
 
 ```text
-plateDelta(p)   = Σ_b  amplitude_b · type_b · smoothstep(0, 1, 1 − d_b(p) / width_b)
-craterDelta(p)  = craterField(p)              // from the crater list / coarse field
-erosionDelta(p) = lowFrequencyErosion(p)      // climate-driven, from 05 and 06
+plateDelta(p)   = Σ_{i<j} activity · amp_ij(p) · 4 · w_i(p) · w_j(p)   // soft Voronoi, see below
+craterDelta(p)  = Σ_k profile_k(|p − c_k|)    // from the crater list, via the crater index
+erosionDelta(p) = lowFrequencyErosion(p)      // climate-driven, from 05 and 06; 0 until climate exists
 ```
 
-- `d_b(p)` is the geodesic distance to plate boundary `b`.
-- `type_b` is `+1` for convergent (ridge/mountain), `−1` for divergent (rift/trench), and `0` for
-  transform (shear, no height contribution).
-- `amplitude_b` and `width_b` come from the tectonic parameters in the descriptor.
+`PROPOSED` (P1-A, 2026-11-13; replaces the earlier `Σ_b amplitude_b · type_b · smoothstep(1 −
+d_b / width_b)`): **plates are a soft Voronoi.** A "nearest boundary" sum switches abruptly
+wherever the nearest boundary changes, which makes vertical walls along lines from every triple
+junction (the [B-005](../work/BUGS.md) lesson). Instead:
+
+- `w_i(p) ∝ exp(−(d_i − d_min) / softness)`, normalised, where `d_i` is the geodesic distance from
+  the domain-warped `p` to plate `i`'s seed point. The weights are equal exactly on the Voronoi
+  bisectors, so plates and boundaries are where [06](./06-geology-and-landforms.md#plate-layout) puts
+  them; the warp keeps boundaries from being great-circle arcs.
+- `4 w_i w_j` is 1 on a two-plate boundary and fades away from it and at junctions, so the
+  boundary width is set by `softness` (half-width ≈ 1.8 × softness).
+- `amp_ij(p) = c · A(types)` for convergence `c ∈ (0, 1]` and `c · rift` for `c < 0`, where
+  `c = (v_i − v_j) · t̂ / |v_i − v_j|` is the relative surface velocity from the plates' Euler-pole
+  rotations along the normal `t̂` from `i` towards `j`. Transform motion gives `c ≈ 0`: no height.
+- The same weights (with a wider softness) blend the continental and oceanic base elevations in
+  `macroHeight`, which is what the pyramid caches.
+
+The result is continuous everywhere: `genesis_gen`'s test walks great circles in 10 m steps and
+finds at most 7.9 m per step; a discontinuous crater rim fails the same test at 68 m.
+Craters use the continuous profile from B-005: bowl `−depth · (1 − t²)` for `t = dist / r < 1`,
+rim `0.8 · depth · u · (1 − u)` for `u = t − 1 ∈ [0, 1)`, 0 beyond `2r`.
 
 Craters are an accumulation model over age provinces, not per-sample noise; the crater field is
 described in [06](./06-geology-and-landforms.md). Erosion is a low-frequency modulation, not a
