@@ -21,8 +21,131 @@ pub struct Normal {
     pub hi: f64,
 }
 
+/// Stand-in energy and atmosphere draws until stars and orbits exist (P1-C1), and the climate
+/// tuning constants (docs/05; "a climate preset", later content data).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ClimateParams {
+    // ---- energy (docs/05 "Energy budget") ----
+    /// `ln` of insolation relative to Earth: `N(0, insolation_sigma)`, clamped.
+    pub insolation_sigma: f64,
+    pub insolation: Range,
+    /// Bond albedo before the ice feedback.
+    pub albedo: Range,
+    /// Albedo of a frozen sea surface (the feedback target).
+    pub ice_albedo: f64,
+    pub internal_heat: Range,
+    /// K at full internal heat (docs/05: order 10 K).
+    pub internal_warming: f64,
+
+    // ---- atmosphere ----
+    /// Probability that the body has an atmosphere.
+    pub atmosphere: f64,
+    /// `ln` of surface pressure (Pa): `N(ln(pressure_median), pressure_sigma)`, clamped.
+    pub pressure_median: f64,
+    pub pressure_sigma: f64,
+    pub pressure: Range,
+    /// Greenhouse offset from Earth's baseline, K: `−33 + 33 · min(p / 1e5, 3)^½ + N(0, σ)`;
+    /// 0 at one bar, −33 K with no atmosphere (docs/05).
+    pub greenhouse_sigma: f64,
+
+    // ---- temperature field (docs/05) ----
+    /// `A_lat0`, K.
+    pub latitude_amplitude: f64,
+    /// Heat transport per bar of pressure, before clamping to [0, 1].
+    pub transport_scale: f64,
+    /// Lapse rate at 1 g and 1 bar, K/m.
+    pub lapse: f64,
+    pub tropopause: f64,
+    pub oro_cooling: f64,
+    pub coastal_warming: f64,
+    pub coast_length: f64,
+
+    // ---- moisture and wind (docs/05) ----
+    pub moisture_base: f64,
+    pub moisture_noise: f64,
+    pub moisture_wavelength: f64,
+    pub itcz: f64,
+    pub itcz_sigma: f64,
+    pub subtropic: f64,
+    pub subtropic_sigma: f64,
+    pub midlatitude: f64,
+    pub midlatitude_sigma: f64,
+    pub water_moisture: f64,
+    pub water_length: f64,
+    /// `L_wind`: upwind sampling distance, metres.
+    pub wind_distance: f64,
+    pub slope_ref: f64,
+    pub oro_moisture: f64,
+    pub rain_shadow: f64,
+    pub wind_meridional: f64,
+    pub wind_noise_wavelength: f64,
+
+    // ---- biosphere ----
+    /// Weights of `none`, `microbial`, `complex`, `exotic` where life is possible (docs/11's
+    /// example table).
+    pub biosphere_weights: [f64; 4],
+    /// Global mean temperature window for any life, K.
+    pub biosphere_temperature: Range,
+
+    // ---- grids ----
+    /// Cells per face edge of the water-distance field.
+    pub water_distance_grid: usize,
+}
+
+impl Default for ClimateParams {
+    fn default() -> ClimateParams {
+        ClimateParams {
+            insolation_sigma: 0.3,
+            insolation: Range { lo: 0.25, hi: 4.0 },
+            albedo: Range { lo: 0.2, hi: 0.45 },
+            ice_albedo: 0.6,
+            internal_heat: Range { lo: 0.0, hi: 1.0 },
+            internal_warming: 10.0,
+            atmosphere: 0.85,
+            pressure_median: 60_000.0,
+            pressure_sigma: 0.8,
+            pressure: Range {
+                lo: 1_000.0,
+                hi: 1_000_000.0,
+            },
+            greenhouse_sigma: 8.0,
+            latitude_amplitude: 30.0,
+            transport_scale: 0.7,
+            lapse: 0.0065,
+            tropopause: 12_000.0,
+            oro_cooling: 2.0,
+            coastal_warming: 1.0,
+            coast_length: 6_000.0,
+            moisture_base: 0.15,
+            moisture_noise: 0.25,
+            moisture_wavelength: 30_000.0,
+            itcz: 0.25,
+            itcz_sigma: 12.0,
+            subtropic: 0.2,
+            subtropic_sigma: 10.0,
+            midlatitude: 0.15,
+            midlatitude_sigma: 12.0,
+            water_moisture: 0.3,
+            water_length: 8_000.0,
+            wind_distance: 8_000.0,
+            slope_ref: 0.05,
+            oro_moisture: 0.2,
+            rain_shadow: 0.2,
+            wind_meridional: 0.2,
+            wind_noise_wavelength: 20_000.0,
+            biosphere_weights: [0.1, 0.2, 0.6, 0.1],
+            biosphere_temperature: Range {
+                lo: 240.0,
+                hi: 330.0,
+            },
+            water_distance_grid: 32,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct RockyParams {
+    pub climate: ClimateParams,
     // ---- bulk and rotation ----
     /// Body radius, metres. Q4 open; E3 ran 8 / 24 / 40 km.
     pub radius: Range,
@@ -101,6 +224,7 @@ pub struct RockyParams {
 impl Default for RockyParams {
     fn default() -> RockyParams {
         RockyParams {
+            climate: ClimateParams::default(),
             radius: Range {
                 lo: 16_000.0,
                 hi: 32_000.0,

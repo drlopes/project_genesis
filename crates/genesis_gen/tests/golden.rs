@@ -7,23 +7,24 @@
 use genesis_gen::descriptor::GENERATOR_VERSION;
 use genesis_gen::{RockyParams, SeedChain, bake_core};
 
+// Re-pinned in generator version 2 (P1-C1: energy, atmosphere, water state, climate, biosphere).
 const GOLDEN: [(u64, u64); 10] = [
-    (1, 0x3F4F_0913_B700_11C8),
-    (2, 0x89F5_FFBD_A77E_F8E0),
-    (3, 0x3E30_7FB6_1101_880A),
-    (42, 0xFD13_6CCA_6F08_BF79),
-    (1337, 0x9C78_1FC5_2E39_60A8),
-    (0xDEAD_BEEF, 0x86F6_2043_4A91_66F1),
-    (0x5EED_0001, 0x73B1_59E6_D301_6060),
-    (7_777_777, 0xD1BE_4CB3_8DEC_C966),
-    (123_456_789, 0x70A3_A5C2_3F81_A8E2),
-    (u64::MAX, 0x12AA_22E7_8A35_1641),
+    (1, 0x2DBB_34A4_9676_4BD6),
+    (2, 0x0E94_7315_1CB3_EEA1),
+    (3, 0xE3A5_9739_7F33_AE31),
+    (42, 0xA701_0B1C_50F0_90C2),
+    (1337, 0xA11F_E7C4_804C_31A0),
+    (0xDEAD_BEEF, 0xEDD3_7E36_FAAF_3E4F),
+    (0x5EED_0001, 0xF4CF_623C_628A_D9D1),
+    (7_777_777, 0xE6A4_18ED_787D_09C5),
+    (123_456_789, 0xB6C9_4418_1D30_E123),
+    (u64::MAX, 0xE585_354C_2626_2154),
 ];
 
 #[test]
 fn golden_descriptor_hashes() {
     assert_eq!(
-        GENERATOR_VERSION, 1,
+        GENERATOR_VERSION, 2,
         "generator version changed: re-pin the golden hashes"
     );
     let p = RockyParams::default();

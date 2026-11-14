@@ -5,10 +5,12 @@
 //! maths only through `genesis_core::math`).
 
 pub mod bake;
+pub mod climate;
 pub mod cube;
 pub mod descriptor;
 pub mod encode;
 pub mod params;
+pub mod physical;
 pub mod relief;
 
 pub use bake::{BakeError, Caches, bake_caches, bake_core};

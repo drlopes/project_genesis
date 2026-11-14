@@ -59,6 +59,24 @@ data with `genesis_content`). Uniform draws unless noted, each from the `bulk` s
 Per-region stratified sampling (docs/11) waits for the system bake: a body baked alone draws
 independently.
 
+`PROPOSED` (P1-C1, the new phases in `genesis_gen::RockyParams::climate`; stand-ins until stars and
+orbits exist — full formulas in [05](./05-climate-and-hydrosphere.md#as-implemented-energy-and-atmosphere-p1-c1)):
+
+| Parameter | Draw | Note |
+|---|---|---|
+| insolation | `exp(0.3 · N(0,1))`, clamped 0.25–4 | relative to Earth; lognormal until a star gives it |
+| albedo | uniform 0.2–0.45, then the ice feedback | raises toward 0.6 as the sea freezes |
+| internal heat | uniform 0–1 | ×10 K surface warming |
+| tidal heat | 0 | needs moons and orbits |
+| atmosphere | present with probability 0.85 | |
+| surface pressure | lognormal, median 60 kPa, `σ_ln` 0.8, clamped 1 kPa–1 MPa | 0 when absent |
+| greenhouse | `−33 K + 33 K·√(min(p/1 bar, 3)) + N(0, 8 K)`; exactly `−33 K` when absent | offset from Earth's baseline |
+| biosphere level | weights none 0.1 / microbial 0.2 / complex 0.6 / exotic 0.1 | only with liquid water and 240–330 K |
+| biosphere density | 0.1–0.4 microbial, 0.3–1.0 otherwise | 0 with no life |
+
+The ice feedback's two iterations make the albedo itself a result, not a dial: a cold ocean gets
+brighter and colder, which is how frozen worlds stay frozen.
+
 ---
 
 ## Body class vs derived label

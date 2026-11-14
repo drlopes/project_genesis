@@ -99,6 +99,34 @@ T_base = T_eq + greenhouse + internalWarming + tidalWarming
 
 `DECIDED` — insolation + albedo + greenhouse + internal + tidal heat. No full radiative transfer.
 
+### As implemented: energy and atmosphere (P1-C1)
+
+Stars and orbits do not exist yet, so insolation is a **per-body stand-in draw**:
+`S = exp(0.3 · N(0, 1))` — lognormal, median Earth — clamped to `[0.25, 4]`. Albedo starts uniform
+in `[0.2, 0.45]` and the ice feedback raises it toward the ice albedo:
+
+```text
+A = A₀ + (0.6 − A₀) · frozenSeaFraction · oceanFraction     // two iterations
+T_base = 288 · S^0.25 · ((1 − A) / 0.7)^0.25
+       + greenhouse + 10 K · internalHeat
+```
+
+The atmosphere is present with probability 0.85. Its pressure is lognormal — median 60 kPa,
+`σ_ln = 0.8`, clamped to 1 kPa … 1 MPa — and
+`greenhouse = −33 K + 33 K · √(min(p / 1 bar, 3)) + N(0, 8 K)`; a body with no atmosphere gets
+exactly `−33 K` (one Earth baseline removed). Internal heat is uniform in `[0, 1]`. `tidalHeat` is 0
+and `tidalLockClimate` is `null` until moons and orbits exist.
+
+The albedo feedback needs the frozen fraction, which needs the coarse relief, so the energy and
+atmosphere phases resolve **after** sea level even though they are logically bake steps 2–3. That
+is a dependency, not a decision, and it is invisible in the descriptor. Every constant above is
+`PROPOSED` in `RockyParams::climate`.
+
+Over 40 seeds every water state appears — ice 15, liquid 11, mixed 11, none 1, vapour 2 — so the
+draws span infernal to cryogenic without any seed contradicting its own state (checked by
+`crates/genesis_gen/tests/climate.rs`).
+
+
 ---
 
 ## The temperature field
@@ -385,9 +413,8 @@ windDir = normalize(east · (band + 0.15) + north · meridionalNoise(p))
   direction matters for moisture.
 - `terrainDeflection(p)` rotates the wind slightly around steep slopes. It must be small; the wind
   is a climate input, not a local flow solver.
-- Near the poles, use a stable fallback tangent (e.g. `+X` projected onto the tangent plane) so the
-  basis never divides by zero. Wind direction at the exact pole is arbitrary; pick one and keep it
-  continuous.
+- Near the poles the tangent basis degenerates. A fallback tangent (e.g. `+X` projected) avoids a
+  division by zero but does **not** stay continuous once normalised; see "As implemented" below.
 - On a tidally locked body, replace the band function with flow away from the substellar point:
 
 ```text
@@ -399,6 +426,25 @@ circulation without a general circulation model.
 
 `PROPOSED` — wind bands are a latitude function rotated by a per-planet offset. The exact band
 function is a tuning constant.
+
+### As implemented: wind continuity (P1-C1)
+
+The direction is **not normalised** where the fields consume it. Normalising is discontinuous twice
+over:
+
+- The raw vector passes through zero where the zonal band crosses `−0.15` while the meridional
+  noise is near zero, so the normalised direction flips and the 8 km upwind sample jumps with it.
+- A continuous *unit* tangent field on a sphere must vanish somewhere (hairy ball), so no
+  normalised basis — including the `+X` fallback above — can be smooth near a pole; it turns at a
+  finite rate within a few degrees.
+
+The climate continuity test caught both: 0.4 moisture within 50 m in a calm belt, and a 0.41 K step
+within 1 mm at 88.6° S. So `east` and `north` are the smooth tangent fields themselves —
+`east = Y × p` and `north = Y − p · (p · Y)`, both of length `cos(latitude)` — and the upwind
+sample is offset by `windVector · L_wind`. The wind weakens to nothing in calm belts and at the
+poles, where the upwind sample simply moves less instead of jumping. `ClimateField::wind()` returns
+`None` where the field is exactly calm: direction is genuinely undefined there, and the weather
+layer should treat it as still air.
 
 ---
 
@@ -464,8 +510,17 @@ The solve as implemented in `genesis_gen` (P1-A, `PROPOSED` numbers):
   0.001 for the test seeds.
 - `oceanFraction` is drawn per body as `clamp(0.55 + 0.25 · N(0, 1), 0, 0.95)` (docs/02's default
   profile `water_fraction`); below 0.02 the body is dry (`state = none`, `seaRadius = null`).
-  `waterInventory` and the derived `state` wait for the energy and atmosphere phases; until then
-  `state` is `liquid` when there is a sea.
+  `waterInventory` is not stored yet: `oceanFraction` stands in for it (a P1-C1 gap). The state
+  itself is derived in P1-C1, after the energy and atmosphere phases:
+
+  - **none** — the draw gave no sea.
+  - **vapour** — `T_base` is at or above the boiling point at the surface pressure (Clausius–Clapeyron
+    from 373.15 K at 1 atm: ~350 K at 30 kPa, ~410 K at 5 bar), or the pressure is below water's
+    triple point (611.657 Pa) and the body is not frozen. A boiled-off body keeps **no sea**:
+    `seaRadius = null`, and climate is evaluated as on a dry world.
+  - **ice** — at least 90 % of the sea surface is below freezing at the annual mean; **mixed**
+    between 30 % and 90 %; **liquid** below 30 %. The frozen fraction is area-weighted, from `T_base`
+    plus the latitude term at sea level.
 
 ### Ice
 
@@ -602,6 +657,31 @@ nothing, and sells the presence of a large moon. Skip it on tidally locked or mo
 Like waves, it must not enter `waterSurface`.
 
 ---
+
+## As implemented (P1-C1, generator version 2)
+
+- **Temperature and moisture** are computed exactly as above from the descriptor's climate
+  parameters. The bake samples them on the 6 × 64² relief grid; the full fields are evaluated at
+  query time, as decided.
+- **Water distance**, the moisture field's distance-to-water term, is a cache: an `n + 1` node grid
+  (32 cells per face edge) holding metres to the nearest sea cell centre, and 0 where the node
+  itself is under the sea.
+- **`ClimateRanges`** summarises the axes over **land** — cells above the sea surface, or all cells
+  on a dry body — area-weighted: `temperature`, `moisture`, `altitude` and `slope` as
+  min / max / mean, plus `landFraction`. This is the input palette selection will consume
+  (docs/19); in P1-C1 it is informational.
+- **Slope** is `atan(|∇h0|)` in degrees, from two tangent differences of `h0` over 20 m — docs/19's
+  classification definition, not a final shading normal.
+- **Biosphere** (bake step 10): life is possible only where the water state is `liquid` or `mixed`
+  and `240 K ≤ T_base ≤ 330 K`. The level is then drawn from the weights none 0.1, microbial 0.2,
+  complex 0.6, exotic 0.1; density is 0.1–0.4 for microbial and 0.3–1.0 otherwise. Without liquid
+  water the level is `none` and density 0. The window and the weights are `PROPOSED`; docs/11 holds
+  the profile table they came from.
+- **Continuity is a test, not a hope.** It walks great circles through both poles and one tilted
+  circle, and measures the largest change per step at 50 m and at 12.5 m, requiring the change to
+  shrink with the step — a jump keeps its size at any step, a continuous field does not. On seed
+  1337 that is 0.35 K / 0.041 moisture per 50 m and 0.09 K / 0.011 per 12.5 m; steep terrain
+  dominates the absolute size, as it should.
 
 ## Climate outputs consumed elsewhere
 

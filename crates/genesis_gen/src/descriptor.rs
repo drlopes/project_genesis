@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 /// Descriptor schema version (docs/03 "Versioning and regeneration").
 pub const SCHEMA_VERSION: u32 = 1;
 /// Bumped whenever bake output changes for the same seed (docs/16 "Versioning").
-pub const GENERATOR_VERSION: u32 = 1;
+pub const GENERATOR_VERSION: u32 = 2;
 
 /// The seed chain (docs/11): a galaxy seed and the indices down to the body.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -113,6 +113,90 @@ pub struct Hydrosphere {
     pub lakes: Option<Deferred>,
 }
 
+/// docs/05 "Energy budget". Insolation is a per-body stand-in draw until stars exist.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Energy {
+    /// Relative to Earth.
+    pub insolation: f64,
+    /// Bond albedo after the ice feedback.
+    pub albedo: f64,
+    /// K offset from Earth's baseline greenhouse (0 = Earth-like, −33 = none).
+    pub greenhouse: f64,
+    /// 0..1.
+    pub internal_heat: f64,
+    /// 0..1; 0 until moons and orbits exist.
+    pub tidal_heat: f64,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Atmosphere {
+    pub present: bool,
+    /// Pa; 0 when absent.
+    pub surface_pressure: f64,
+}
+
+/// `min`, `max`, area-weighted `mean`.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Stat {
+    pub min: f64,
+    pub max: f64,
+    pub mean: f64,
+}
+
+/// The climate axes over the body's land (cells above the sea surface, or all cells on a dry
+/// body), on the relief grid: the input to palette selection (docs/19 step 2).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClimateRanges {
+    pub land_fraction: f64,
+    /// K.
+    pub temperature: Stat,
+    /// 0..1.
+    pub moisture: Stat,
+    /// Metres above sea level.
+    pub altitude: Stat,
+    /// Degrees, from `h0` over 20 m.
+    pub slope: Stat,
+}
+
+/// docs/05 climate parameters (the fields themselves are evaluated at query time).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Climate {
+    /// `T_base`, K: the global mean surface temperature.
+    pub mean_surface_temp: f64,
+    /// `A_lat`, K, after heat transport.
+    pub latitude_amplitude: f64,
+    /// Atmospheric heat transport, 0..1.
+    pub transport: f64,
+    /// K per metre.
+    pub lapse_rate: f64,
+    /// Fraction of the sea surface below freezing (drives the ice feedback and `state`).
+    pub frozen_sea_fraction: f64,
+    pub ranges: ClimateRanges,
+    /// `null` until orbits exist.
+    pub tidal_lock_climate: Option<Deferred>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum BiosphereLevel {
+    None,
+    Microbial,
+    Complex,
+    Exotic,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Biosphere {
+    pub level: BiosphereLevel,
+    /// 0..1; 0 when the level is `none`.
+    pub density: f64,
+}
+
 /// One tectonic plate (docs/06 "Plates").
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -182,16 +266,16 @@ pub struct DescriptorCore {
     pub orbit: Option<Deferred>,
     pub bulk: Bulk,
     pub rotation: Rotation,
-    pub energy: Option<Deferred>,
-    pub atmosphere: Option<Deferred>,
+    pub energy: Option<Energy>,
+    pub atmosphere: Option<Atmosphere>,
     pub hydrosphere: Hydrosphere,
     pub geology: Geology,
-    pub climate: Option<Deferred>,
+    pub climate: Option<Climate>,
     pub regions: Option<Deferred>,
     pub biome_palette: Option<Deferred>,
     pub landform_suites: Option<Deferred>,
     pub materials: Option<Deferred>,
-    pub biosphere: Option<Deferred>,
+    pub biosphere: Option<Biosphere>,
     pub aquatic: Option<Deferred>,
     pub narrative: Option<Deferred>,
 }
@@ -220,8 +304,21 @@ impl DescriptorCore {
         e.f64(r.day_length);
         e.f64(r.obliquity);
         e.opt_bool(r.tidal_lock);
-        e.deferred(self.energy);
-        e.deferred(self.atmosphere);
+        e.opt(self.energy.as_ref(), |e, x| {
+            for v in [
+                x.insolation,
+                x.albedo,
+                x.greenhouse,
+                x.internal_heat,
+                x.tidal_heat,
+            ] {
+                e.f64(v);
+            }
+        });
+        e.opt(self.atmosphere.as_ref(), |e, x| {
+            e.bool(x.present);
+            e.f64(x.surface_pressure);
+        });
         let h = &self.hydrosphere;
         e.f64(h.ocean_fraction);
         e.u8(h.state as u8);
@@ -253,16 +350,38 @@ impl DescriptorCore {
             e.f64(*q);
         }
         e.f64(g.hypsometry.mean);
+        e.opt(self.climate.as_ref(), |e, c| {
+            for v in [
+                c.mean_surface_temp,
+                c.latitude_amplitude,
+                c.transport,
+                c.lapse_rate,
+                c.frozen_sea_fraction,
+            ] {
+                e.f64(v);
+            }
+            let r = &c.ranges;
+            e.f64(r.land_fraction);
+            for s in [r.temperature, r.moisture, r.altitude, r.slope] {
+                e.f64(s.min);
+                e.f64(s.max);
+                e.f64(s.mean);
+            }
+            e.deferred(c.tidal_lock_climate);
+        });
         for d in [
-            self.climate,
             self.regions,
             self.biome_palette,
             self.landform_suites,
             self.materials,
-            self.biosphere,
-            self.aquatic,
-            self.narrative,
         ] {
+            e.deferred(d);
+        }
+        e.opt(self.biosphere.as_ref(), |e, b| {
+            e.u8(b.level as u8);
+            e.f64(b.density);
+        });
+        for d in [self.aquatic, self.narrative] {
             e.deferred(d);
         }
         e.into_bytes()

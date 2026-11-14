@@ -248,9 +248,14 @@ In production (P1-A): `crates/genesis_gen/tests/golden.rs` pins the descriptor h
 E2's ten seeds. Only rocky bodies exist so far, so the set is not yet the representative list
 above; worlds of the other kinds join it as their generators arrive. The test also asserts
 `GENERATOR_VERSION`, so a version bump forces a deliberate re-pin. Bake phases draw from the
-registered subsystem tags `bulk`, `hydrosphere` and `geology`, and the feature seeds
-`H(geologySeed, "plate", i)` and `H(geologySeed, "crater", i)`. Purposes used inside them are
-listed in `genesis_gen::bake`.
+registered subsystem tags `bulk`, `hydrosphere`, `geology`, `energy`, `atmosphere`, `climate` and
+`biosphere`, and the feature seeds `H(geologySeed, "plate", i)` and
+`H(geologySeed, "crater", i)`. Purposes used inside them are listed in `genesis_gen::bake` and
+`genesis_gen::physical`.
+
+Version history of the golden set: **1** — P1-A, the rocky bake. **2** — P1-C1, the physical
+phases (energy, atmosphere, water state, climate summary, biosphere); the ten hashes were re-pinned
+deliberately in that change, and that is the only reason they may differ from 1.
 
 ---
 

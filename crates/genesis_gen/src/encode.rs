@@ -61,6 +61,16 @@ impl Encoder {
             Some(true) => 2,
         });
     }
+    /// An optional block: a tag byte (0 absent, 1 present), then its fields if present.
+    pub fn opt<T>(&mut self, v: Option<&T>, f: impl FnOnce(&mut Encoder, &T)) {
+        match v {
+            None => self.u8(0),
+            Some(x) => {
+                self.u8(1);
+                f(self, x);
+            }
+        }
+    }
     /// A deferred block: always absent today; encoded so that filling it changes the bytes.
     pub fn deferred(&mut self, d: Option<Deferred>) {
         self.u8(u8::from(d.is_some()));

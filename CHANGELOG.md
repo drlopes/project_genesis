@@ -59,6 +59,22 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
   culling boxes cover both morph shapes.
 
 ### Added
+- **`genesis_gen` physical phases** (P1-C1; `GENERATOR_VERSION` 2, golden hashes re-pinned on
+  purpose):
+  - `energy` and `atmosphere` from per-body stand-in draws until stars and orbits exist: lognormal
+    insolation and pressure, albedo with two ice-feedback iterations, greenhouse from pressure,
+    exactly `−33 K` without an atmosphere;
+  - `hydrosphere.state` derived from temperature and pressure — none / ice / mixed / liquid /
+    vapour, boiling point from Clausius–Clapeyron, and a boiled-off body keeps no sea;
+  - `climate`: `T_base`, latitude amplitude after transport, lapse rate, frozen sea fraction, and
+    `ranges` — temperature, moisture, altitude and slope summarised over land on the 6 × 64² relief
+    grid, area-weighted min/max/mean — plus a water-distance cache (32² per face);
+  - `biosphere`: level drawn from the profile weights where liquid water exists in the temperature
+    window, and density;
+  - a climate continuity test that requires the fields' change to shrink with the step. It caught
+    two real discontinuities in the wind (0.4 moisture within 50 m, then a 0.41 K step within 1 mm
+    at 88.6° S); the fix is to use the smooth unnormalised tangent field, so wind dies out in calm
+    belts and at the poles instead of turning abruptly.
 - **`genesis_content`** (P1-B):
   - content packs with manifests, dependency load order, namespaced IDs, shorthand resolution and
     aliases;

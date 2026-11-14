@@ -18,6 +18,7 @@
 use crate::cube::{self, Grid, Vec3, angle, face_uv};
 use crate::descriptor::*;
 use crate::params::{Normal, Range, RockyParams};
+use crate::physical::{PhysicalInputs, physical_phases};
 use crate::relief::Relief;
 use genesis_core::Seed;
 use genesis_core::math::f64 as m;
@@ -63,12 +64,12 @@ fn check(params: &RockyParams) -> Result<(), BakeError> {
     Ok(())
 }
 
-fn uniform(seed: Seed, purpose: &str, r: Range) -> f64 {
+pub(crate) fn uniform(seed: Seed, purpose: &str, r: Range) -> f64 {
     r.lo + (r.hi - r.lo) * rng::unit_f64(seed, purpose, 0)
 }
 
 /// `N(0, 1)` by Box–Muller from two counter draws (index 0 and 1 of `purpose`).
-fn gaussian(seed: Seed, purpose: &str) -> f64 {
+pub(crate) fn gaussian(seed: Seed, purpose: &str) -> f64 {
     // u1 in (0, 1): never 0, so the logarithm is finite.
     let u1 = ((rng::u64_at(seed, purpose, 0) >> 11) as f64 + 0.5) / (1u64 << 53) as f64;
     let u2 = rng::unit_f64(seed, purpose, 1);
@@ -146,15 +147,17 @@ pub fn bake_core(chain: SeedChain, params: &RockyParams) -> Result<DescriptorCor
     let relief = Relief::new(geo, radius, tectonic_activity, &plates, &craters, params);
     let n = params.relief_grid;
     let spacing = 2.0 / n as f64 * radius;
-    let mut cells: Vec<(f64, f64)> = Vec::with_capacity(6 * n * n);
+    // (direction, area, h0) per cell, in grid order: kept for the climate pass below.
+    let mut grid: Vec<(Vec3, f64, f64)> = Vec::with_capacity(6 * n * n);
     for face in 0..6 {
         for j in 0..n {
             for i in 0..n {
                 let (d, w) = cube::cell(face, n, i, j);
-                cells.push((relief.h0(d, spacing), w));
+                grid.push((d, w, relief.h0(d, spacing)));
             }
         }
     }
+    let mut cells: Vec<(f64, f64)> = grid.iter().map(|c| (c.2, c.1)).collect();
     // Sort by height; ties keep grid order (stable sort), so the result is fully determined.
     cells.sort_by(|a, b| a.0.total_cmp(&b.0));
     let total: f64 = cells.iter().map(|c| c.1).sum();
@@ -191,6 +194,26 @@ pub fn bake_core(chain: SeedChain, params: &RockyParams) -> Result<DescriptorCor
         Some(radius + level)
     };
 
+    // ---- energy, atmosphere, climate, water state, biosphere (P1-C1) ----
+    let physical = physical_phases(
+        body,
+        &relief,
+        &grid,
+        PhysicalInputs {
+            radius,
+            gravity,
+            spacing,
+            sea_level: sea_radius.map(|s| s - radius),
+            ocean_fraction,
+        },
+        params,
+    );
+    let sea_radius = if physical.state == WaterState::Vapour {
+        None
+    } else {
+        sea_radius
+    };
+
     Ok(DescriptorCore {
         version: SCHEMA_VERSION,
         generator: "rocky".into(),
@@ -201,15 +224,11 @@ pub fn bake_core(chain: SeedChain, params: &RockyParams) -> Result<DescriptorCor
         orbit: None,
         bulk,
         rotation,
-        energy: None,
-        atmosphere: None,
+        energy: Some(physical.energy),
+        atmosphere: Some(physical.atmosphere),
         hydrosphere: Hydrosphere {
             ocean_fraction,
-            state: if dry {
-                WaterState::None
-            } else {
-                WaterState::Liquid
-            },
+            state: physical.state,
             water_body: WaterBody::Marine,
             sea_radius,
             lakes: None,
@@ -227,12 +246,12 @@ pub fn bake_core(chain: SeedChain, params: &RockyParams) -> Result<DescriptorCor
                 mean,
             },
         },
-        climate: None,
+        climate: Some(physical.climate),
         regions: None,
         biome_palette: None,
         landform_suites: None,
         materials: None,
-        biosphere: None,
+        biosphere: Some(physical.biosphere),
         aquatic: None,
         narrative: None,
     })
@@ -293,6 +312,8 @@ pub struct Caches {
     /// `macroHeight` at the pyramid nodes, band-limited to the node spacing.
     pub pyramid: Grid,
     pub crater_index: CraterIndex,
+    /// Distance to the nearest water, metres, at the nodes (docs/05); None without a sea.
+    pub water_distance: Option<Grid>,
 }
 
 /// Cube-sphere cells listing, in ascending order, the craters whose influence (2 × rim radius)
@@ -364,6 +385,11 @@ pub fn bake_caches(core: &DescriptorCore, params: &RockyParams) -> Caches {
     Caches {
         pyramid,
         crater_index: CraterIndex::build(radius, &core.geology.craters, params.crater_index_grid),
+        water_distance: crate::physical::water_distance(
+            &relief,
+            core.hydrosphere.sea_radius.map(|s| s - radius),
+            params.climate.water_distance_grid,
+        ),
     }
 }
 

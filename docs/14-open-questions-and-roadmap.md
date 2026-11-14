@@ -201,7 +201,9 @@ inspector is that CLI dump for now; the Bevy + egui inspector comes later.
 **Exit:** underwater plays like a place, not a loading screen with fish.
 
 ### Phase 2 — Variety
-- Implement climate fields and derived biomes.
+- Implement climate fields and derived biomes. **Partly done (P1-C1)**: the temperature and
+  moisture fields exist with the descriptor's climate parameters and a land summary; palette
+  selection is P1-C2.
 - Implement 6–8 landform suites.
 - Implement geological/material region layers.
 - Add a barren world and a water world to prove the degenerate cases.

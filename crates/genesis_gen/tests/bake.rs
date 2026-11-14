@@ -56,14 +56,10 @@ fn absent_blocks_are_explicit_nulls() {
     let v = serde_json::to_value(&core).unwrap();
     for key in [
         "orbit",
-        "energy",
-        "atmosphere",
-        "climate",
         "regions",
         "biomePalette",
         "landformSuites",
         "materials",
-        "biosphere",
         "aquatic",
         "narrative",
         "contentVersion",
@@ -76,8 +72,12 @@ fn absent_blocks_are_explicit_nulls() {
     for key in [
         "bulk",
         "rotation",
+        "energy",
+        "atmosphere",
         "hydrosphere",
         "geology",
+        "climate",
+        "biosphere",
         "id",
         "seedChain",
     ] {

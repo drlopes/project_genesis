@@ -84,7 +84,8 @@ Adding a field inside a layer is non-breaking. Renaming or removing one is a sch
 ## Schema
 
 The exact format is an implementation detail (JSON, MessagePack, binary struct). The important
-part is the **shape**. A representative schema:
+part is the **shape**. A representative schema — the target shape, not the implemented subset (see "As implemented"
+under bake ordering):
 
 ```jsonc
 {
@@ -389,6 +390,30 @@ the outputs of earlier ones.
     and biosphere. See [15](./15-aquatic-environments.md).
 13. **Narrative** — affinity, resolved overlays, anomalies, POIs, naming.
 14. **Derived labels** — computed last, from everything above.
+
+### As implemented (P1-C1, generator version 2)
+
+Steps **1–8 and 10** run in the core bake and are stored; the rest are explicit `null`s.
+
+- **Step 2 (energy) and step 3 (atmosphere)** are per-body **stand-in draws** — profiles in
+  `RockyParams::climate`, documented in [05](./05-climate-and-hydrosphere.md#as-implemented-p1-c1-generator-version-2)
+  — until stars, orbits, and atmospheric retention exist. `tidalHeat` is 0 and
+  `tidalLockClimate` is `null`.
+- **Step 4 (water state)** is derived from temperature and pressure. `waterInventory` is not
+  stored: `oceanFraction` stands in for it.
+- **Step 5 (geology)** runs, but its erosion regime is not derived yet.
+- **Step 7** completes the sea level; **lakes are not filled** (`lakes` is `null`).
+- **Step 8 (climate)** stores the parameters (`meanSurfaceTemp`, `latitudeAmplitude`, `transport`,
+  `lapseRate`, `frozenSeaFraction`) plus `ranges` — the climate axes summarised over land on the
+  relief grid, for palette selection. The fields themselves stay at query time.
+- **Step 9 (region layers)** does not run, so step 11 (palettes and suites) cannot either; their
+  blocks are `null` and P1-C2 fills them.
+- **Step 10 (biosphere)** runs from the water state and `T_base`; it does not yet affect anything.
+- **Step 12 (aquatic)** waits on the biosphere and the palette. **13 (narrative)** and
+  **14 (derived labels)** are later phases.
+
+The JSON block above is the target; the implemented types differ where noted here, for example
+`climate.ranges` (min/max/mean per axis) instead of `axes`, and no `biosphere.palette` yet.
 
 ### Core versus caches
 

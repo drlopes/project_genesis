@@ -4,27 +4,45 @@ Rules: [work/README.md](README.md). One active goal; everything else is captured
 
 ## Active goal
 
-_None._ P1-B is done; P1-C (below) needs scoping with the user.
+**P1-C2 — Content selection in the bake: biome palette, landform suites, content identity.** Numbers
+approved by the user 2026-11-14 with the P1-C split.
+
+- [ ] `genesis_gen` can load a content set (a `Loaded` from `genesis_content`) and the bake takes it
+      as an input; today the generator never depends on Bevy, but it does depend on content data
+- [ ] Palette selection: coverage = area-weighted mean suitability on the macro grid, lognormal
+      spread σ = 0.25, raw draws stored, families only (docs/19)
+- [ ] Suite selection: only suites reachable from the chosen palettes; parameters drawn ±15 % around
+      the content value, clamped to the module schema's bounds, seeded by suite ID (docs/06)
+- [ ] `contentVersion` and the content digest in the descriptor; `GENERATOR_VERSION` bump and a
+      deliberate golden re-pin
 
 ## Where we stopped
 
-P1-A done: `genesis_gen` bakes a rocky body's descriptor core, `genesis descriptor --seed N`
-prints it, golden hashes are pinned in CI. docs/14's Phase 0 exit is met.
+P1-C1 done: the descriptor core now carries energy, atmosphere, water state, climate parameters with
+land ranges, and a biosphere level. `GENERATOR_VERSION` is 2; the golden hashes were re-pinned on
+purpose. Over 40 seeds all five water states appear (ice 15, liquid 11, mixed 11, none 1, vapour 2).
 
 ## Waiting on the user
 
-_Nothing._ (2026-11-13: the user confirmed soft-Voronoi plates and craters out of the pyramid,
-now `DECIDED` in docs/09 and docs/06.)
+_Nothing._ (2026-11-14: the user approved the P1-C split and every proposed number.)
 
 ## Up next
 
-1. **P1-C** — a climate phase in the bake, biosphere, then palette and suite selection with a
-   content digest in the descriptor (needs decisions on the docs/19 and docs/06 gaps: suite
-   selection, palette coverage, lognormal spread).
-2. **B-002** — make `spike_field` and `spike_voxel` clippy-clean, or exempt spikes from linting
+1. **B-002** — make `spike_field` and `spike_voxel` clippy-clean, or exempt spikes from linting
    explicitly.
+2. **B-006** — CI actions target the deprecated Node 20 runtime.
+3. Vehicle `collisionRadius` in docs/18 needs the vehicle design (I-015).
 
 ## Done recently
+
+- 2026-11-14 — **P1-C1 — Physical phases.** `energy` and `atmosphere` as per-body stand-in draws
+  (lognormal insolation and pressure, two ice-feedback iterations, greenhouse from pressure);
+  `state` from temperature and pressure (none/ice/mixed/liquid/vapour, Clausius–Clapeyron boiling
+  point, boiled-off bodies lose their sea); `climate` with `T_base`, transport, lapse rate, frozen
+  fraction and area-weighted land ranges; `biosphere` level and density; a water-distance cache.
+  `GENERATOR_VERSION` 2, ten golden hashes re-pinned deliberately. The new continuity test walks
+  great circles at 50 m and 12.5 m and requires changes to shrink with the step — it found two wind
+  discontinuities, fixed by using the smooth unnormalised tangent field.
 
 - 2026-11-14 — **P1-B — `genesis_content`.** Pack loading (manifests, dependency order, shorthand
   resolution, aliases), `extends` with the docs/16 merge rules, typed schemas with unknown keys
