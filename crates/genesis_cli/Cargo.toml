@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 genesis_core = { path = "../genesis_core" }
+genesis_content = { path = "../genesis_content" }
 genesis_gen = { path = "../genesis_gen" }
 serde_json.workspace = true
 

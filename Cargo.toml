@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/genesis_core", "crates/genesis_gen", "crates/genesis_cli"]
+members = ["crates/genesis_core", "crates/genesis_content", "crates/genesis_gen", "crates/genesis_cli"]
 
 [workspace.package]
 edition = "2024"
@@ -16,6 +16,8 @@ libm = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
+# Content parsing only; content identity is our own digest of the resolved content (docs/16).
+toml = "1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

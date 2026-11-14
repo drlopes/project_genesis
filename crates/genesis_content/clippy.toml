@@ -1,0 +1,31 @@
+# Generation crates must not use platform maths: results can differ between Windows and Linux.
+# Use genesis_core::math instead. See docs/20-tech-stack-and-workspace.md#determinism-rules.
+# Copy this file into every generation crate (genesis_content, genesis_gen, genesis_edits).
+disallowed-methods = [
+  { path = "f32::sin",    reason = "platform maths; use genesis_core::math::f32::sin" },
+  { path = "f32::cos",    reason = "platform maths; use genesis_core::math::f32::cos" },
+  { path = "f32::tan",    reason = "platform maths; use genesis_core::math::f32::tan" },
+  { path = "f32::sin_cos", reason = "platform maths; use genesis_core::math::f32::{sin,cos}" },
+  { path = "f32::asin",   reason = "platform maths; use genesis_core::math::f32::asin" },
+  { path = "f32::acos",   reason = "platform maths; use genesis_core::math::f32::acos" },
+  { path = "f32::atan",   reason = "platform maths; use genesis_core::math::f32::atan" },
+  { path = "f32::atan2",  reason = "platform maths; use genesis_core::math::f32::atan2" },
+  { path = "f32::exp",    reason = "platform maths; use genesis_core::math::f32::exp" },
+  { path = "f32::ln",     reason = "platform maths; use genesis_core::math::f32::ln" },
+  { path = "f32::powf",   reason = "platform maths; use genesis_core::math::f32::powf" },
+  { path = "f32::tanh",   reason = "platform maths; use genesis_core::math::f32::tanh" },
+  { path = "f32::mul_add", reason = "FMA changes rounding; see determinism rule 3" },
+  { path = "f64::sin",    reason = "platform maths; use genesis_core::math::f64::sin" },
+  { path = "f64::cos",    reason = "platform maths; use genesis_core::math::f64::cos" },
+  { path = "f64::tan",    reason = "platform maths; use genesis_core::math::f64::tan" },
+  { path = "f64::sin_cos", reason = "platform maths; use genesis_core::math::f64::{sin,cos}" },
+  { path = "f64::asin",   reason = "platform maths; use genesis_core::math::f64::asin" },
+  { path = "f64::acos",   reason = "platform maths; use genesis_core::math::f64::acos" },
+  { path = "f64::atan",   reason = "platform maths; use genesis_core::math::f64::atan" },
+  { path = "f64::atan2",  reason = "platform maths; use genesis_core::math::f64::atan2" },
+  { path = "f64::exp",    reason = "platform maths; use genesis_core::math::f64::exp" },
+  { path = "f64::ln",     reason = "platform maths; use genesis_core::math::f64::ln" },
+  { path = "f64::powf",   reason = "platform maths; use genesis_core::math::f64::powf" },
+  { path = "f64::tanh",   reason = "platform maths; use genesis_core::math::f64::tanh" },
+  { path = "f64::mul_add", reason = "FMA changes rounding; see determinism rule 3" },
+]

@@ -1,0 +1,13 @@
+# Classification tuning constants (docs/19 "Tuning constants"; look defaults from E8).
+[classification]
+sharpness         = 4      # k, power normalisation exponent
+budget            = 4      # K, families per stratum after the soft budget
+epsilon           = 1e-3   # fallback floor
+mosaic_strength   = 0.9    # E8 (was 0.35)
+mosaic_scale      = 1500.0 # metres
+jitter_wavelength = 2000.0 # metres
+jitter            = { temp = 2.0, moisture = 0.05, altitude = 60.0, slope = 2.0 }
+strata_blend      = 3.0    # metres, aerial/benthic blend half-width
+cave_blend        = 10.0   # metres, subterranean blend half-width
+palette_drop      = 0.4
+palette_max       = { aerial = 12, benthic = 8 }

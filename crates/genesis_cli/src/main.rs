@@ -2,6 +2,7 @@
 //!
 //! ```text
 //! genesis descriptor --seed 42 [--region 0] [--system 0] [--body 0] [--compact]
+//! genesis validate [data]
 //! ```
 //!
 //! `descriptor` bakes a rocky body and prints its descriptor core as JSON on stdout; the identity
@@ -13,7 +14,7 @@ use std::time::Instant;
 
 fn usage() -> ExitCode {
     eprintln!(
-        "usage: genesis descriptor --seed <u64> [--region <u64>] [--system <u64>] [--body <u64>] [--compact]"
+        "usage: genesis descriptor --seed <u64> [--region <u64>] [--system <u64>] [--body <u64>] [--compact]\n       genesis validate [<data dir>]"
     );
     ExitCode::from(2)
 }
@@ -26,8 +27,50 @@ fn parse_u64(s: &str) -> Option<u64> {
     }
 }
 
+/// `genesis validate [dir]`: load and validate every pack under `dir` (default `data`); print
+/// every diagnostic; exit 1 if there is any error (docs/16 "Validation", docs/20 "Testing").
+fn validate(dir: &str) -> ExitCode {
+    let loaded = match genesis_content::load_dir(std::path::Path::new(dir)) {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("cannot read `{dir}`: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    for d in &loaded.report.diagnostics {
+        eprintln!("{d}");
+    }
+    let (errors, warnings) = (loaded.report.errors(), loaded.report.warnings());
+    match &loaded.content {
+        Some(c) => {
+            eprintln!(
+                "ok: {} · {} entries ({} biomes in {} families, {} ecotones, {} overlays, {} suites, {} palettes, {} materials, {} scatter presets) · digest {:016X} · {warnings} warning(s)",
+                c.content_version(),
+                c.entries(),
+                c.biomes.len(),
+                c.families.len(),
+                c.ecotones.len(),
+                c.overlays.len(),
+                c.suites.len(),
+                c.palettes.len(),
+                c.materials.len(),
+                c.scatter.len(),
+                c.digest
+            );
+            ExitCode::SUCCESS
+        }
+        None => {
+            eprintln!("failed: {errors} error(s), {warnings} warning(s)");
+            ExitCode::FAILURE
+        }
+    }
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("validate") {
+        return validate(args.get(1).map_or("data", String::as_str));
+    }
     if args.first().map(String::as_str) != Some("descriptor") {
         return usage();
     }

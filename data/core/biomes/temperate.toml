@@ -1,0 +1,60 @@
+[biome.temperate_grassland]
+display_name  = "Temperate Grassland"
+kind          = "biome"
+stratum       = "aerial"
+palette       = "green_temperate"
+feature_scale = 0.5
+scatter       = ["grass_tuft", "shrub"]
+landform_bias = ["rolling_hills"]
+tags          = ["temperate", "open"]
+
+[biome.temperate_grassland.suitability]
+temp      = { range = [263, 287], falloff = 8 }
+moisture  = { range = [0.3, 0.65], falloff = 0.12 }
+altitude  = { range = [-50, 1800], falloff = 400 }
+slope     = { range = [0, 35], falloff = 8 }
+substrate = { any_of = ["soil"] }
+
+[biome.temperate_forest]
+display_name  = "Temperate Forest"
+kind          = "biome"
+stratum       = "aerial"
+palette       = "green_temperate"
+feature_scale = 2.0
+scatter       = [
+  { preset = "broadleaf_tree", density = 0.02, scale = [2, 4], slope_max = 30, min_lod = 3 },
+  "shrub",
+]
+landform_bias = [{ suite = "rolling_hills", weight = 1.0 }]
+tags          = ["temperate", "forest"]
+gameplay      = { forage = ["berries", "mushrooms"], cover = 0.6, hazard = "low" }
+
+[biome.temperate_forest.suitability]
+temp      = { range = [272, 296], falloff = 8 }
+moisture  = { range = [0.5, 0.95], falloff = 0.12 }
+altitude  = { range = [-50, 1800], falloff = 400 }
+slope     = { range = [0, 35], falloff = 8 }
+substrate = { any_of = ["soil", "sand"] }
+
+# The one variant: competes only within the temperate forest family (docs/17 "Variants").
+[biome.temperate_forest_alpine]
+display_name   = "Alpine Forest"
+kind           = "variant"
+extends        = "temperate_forest"
+palette        = "alpine_stone"
+scatter_add    = ["conifer"]
+scatter_remove = ["broadleaf_tree"]
+
+[biome.temperate_forest_alpine.suitability]
+temp     = { range = [250, 275], falloff = 4 }
+altitude = { range = [1200, 3000], falloff = 300 }
+
+# Injected between the forest and the grassland only (docs/17 "Ecotones").
+[biome.forest_edge]
+display_name  = "Forest Edge"
+kind          = "biome"
+stratum       = "aerial"
+selectable    = false
+palette       = "green_temperate"
+feature_scale = 1.0
+scatter       = ["shrub", "grass_tuft"]

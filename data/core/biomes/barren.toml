@@ -1,0 +1,13 @@
+# The aerial fallback: wins where nothing else is suitable (docs/19 "The fallback").
+[biome.barren]
+display_name  = "Barren"
+kind          = "biome"
+stratum       = "aerial"
+fallback      = true
+palette       = "barren_rock"
+feature_scale = 1.0
+scatter       = ["boulder"]
+tags          = ["barren"]
+
+[biome.barren.suitability]
+temp = { range = [150, 235], falloff = 10 }

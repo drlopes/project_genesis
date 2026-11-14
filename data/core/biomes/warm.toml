@@ -1,0 +1,33 @@
+[biome.savanna]
+display_name  = "Savanna"
+kind          = "biome"
+stratum       = "aerial"
+palette       = "savanna_gold"
+feature_scale = 0.5
+scatter       = ["grass_tuft", "shrub"]
+landform_bias = [{ suite = "dune_seas", weight = 0.3 }, "rolling_hills"]
+tags          = ["warm", "open", "dry"]
+
+[biome.savanna.suitability]
+temp      = { range = [280, 305], falloff = 8 }
+moisture  = { range = [0.15, 0.5], falloff = 0.12 }
+altitude  = { range = [-50, 1800], falloff = 400 }
+slope     = { range = [0, 35], falloff = 8 }
+substrate = { any_of = ["soil", "sand"] }
+
+[biome.tropical_forest]
+display_name  = "Tropical Forest"
+kind          = "biome"
+stratum       = "aerial"
+palette       = "tropical_lush"
+feature_scale = 2.0
+scatter       = ["broadleaf_tree", "shrub"]
+landform_bias = ["rolling_hills"]
+tags          = ["warm", "forest"]
+
+[biome.tropical_forest.suitability]
+temp      = { range = [289, 313], falloff = 8 }
+moisture  = { range = [0.6, 1.0], falloff = 0.12 }
+altitude  = { range = [-50, 1800], falloff = 400 }
+slope     = { range = [0, 35], falloff = 8 }
+substrate = { any_of = ["soil"] }

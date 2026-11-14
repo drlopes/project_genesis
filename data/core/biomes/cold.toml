@@ -1,0 +1,49 @@
+[biome.tundra]
+display_name  = "Tundra"
+kind          = "biome"
+stratum       = "aerial"
+palette       = "tundra_moss"
+feature_scale = 0.5
+scatter       = ["shrub", "boulder"]
+tags          = ["cold", "open"]
+
+[biome.tundra.suitability]
+temp      = { range = [237, 261], falloff = 8 }
+moisture  = { range = [0.2, 0.7], falloff = 0.12 }
+altitude  = { range = [-50, 1800], falloff = 400 }
+slope     = { range = [0, 35], falloff = 8 }
+substrate = { any_of = ["soil", "rock", "rubble"] }
+
+[biome.boreal_forest]
+display_name  = "Boreal Forest"
+kind          = "biome"
+stratum       = "aerial"
+palette       = "boreal_green"
+feature_scale = 2.0
+scatter       = ["conifer", "shrub"]
+landform_bias = ["rolling_hills"]
+tags          = ["cold", "forest"]
+
+[biome.boreal_forest.suitability]
+temp      = { range = [245, 270], falloff = 8 }
+moisture  = { range = [0.4, 0.9], falloff = 0.12 }
+altitude  = { range = [-50, 1800], falloff = 400 }
+slope     = { range = [0, 35], falloff = 8 }
+substrate = { any_of = ["soil"] }
+
+[biome.cold_steppe]
+display_name  = "Cold Steppe"
+kind          = "biome"
+stratum       = "aerial"
+palette       = "steppe_dry"
+feature_scale = 0.5
+scatter       = ["grass_tuft", "boulder"]
+landform_bias = [{ suite = "dune_seas", weight = 0.3 }, "rolling_hills"]
+tags          = ["cold", "open", "dry"]
+
+[biome.cold_steppe.suitability]
+temp      = { range = [254, 278], falloff = 8 }
+moisture  = { range = [0.1, 0.45], falloff = 0.12 }
+altitude  = { range = [-50, 1800], falloff = 400 }
+slope     = { range = [0, 35], falloff = 8 }
+substrate = { any_of = ["soil", "sand"] }

@@ -52,6 +52,10 @@ jobs:
       - name: Golden descriptors (release)
         run: cargo test --release --locked -p genesis_gen --test golden
 
+      # Every content pack must validate (docs/16 "Validation"): errors fail the build.
+      - name: Validate content
+        run: cargo run --locked -p genesis_cli -- validate data
+
       # Cross-platform determinism (docs/20 rule 6, spike E2): both OSes must reproduce the
       # hashes recorded on the reference Windows machine, in release and debug builds.
       - name: E2 determinism (release)

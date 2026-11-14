@@ -1,0 +1,35 @@
+[palette.barren_rock]
+base   = "regolith"
+accent = "rock"
+
+[palette.tundra_moss]
+base   = "soil"
+accent = "moss"
+tint   = "#7d8a6a"
+
+[palette.boreal_green]
+base   = "leaf_litter"
+accent = "moss"
+
+[palette.steppe_dry]
+base   = "soil"
+accent = "dry_grass"
+
+[palette.green_temperate]
+base      = "soil"
+accent    = "grass"
+tint      = "#6b7d4a"
+roughness = 0.8
+
+[palette.alpine_stone]
+base   = "rock"
+accent = "snow"
+
+[palette.savanna_gold]
+base   = "sand"
+accent = "dry_grass"
+
+[palette.tropical_lush]
+base   = "leaf_litter"
+accent = "grass"
+tint   = "#4f7a3a"

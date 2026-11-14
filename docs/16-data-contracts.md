@@ -417,6 +417,73 @@ Rules:
 
 ---
 
+## As implemented (`genesis_content`, P1-B)
+
+`genesis_content` loads and validates packs; `genesis validate [dir]` runs it, and CI runs it on
+`data/` on every push. The starter pack is `data/core` (E8's stub content as data). Where this
+document was silent or contradicted itself, the crate does the following. Unless marked `DECIDED`,
+it is `PROPOSED`.
+
+**Packs and IDs**
+
+- The manifest's `id` is the pack's namespace. `version` is `major.minor.patch`. `dependencies`
+  lists pack IDs. The engine reads `schema_version` 1 only.
+- Load order: dependencies first, then by pack ID. Within a pack, every `*.toml` file except the
+  manifest, path-sorted. The table prefix declares the type; the directories in the layout above
+  are convention. "Manifest-declared" file order is not supported (nothing needs it yet).
+- Names are lowercase ASCII letters, digits, `_` and `-`, starting with a letter. This resolves
+  the contradiction in "Content IDs": no two IDs differ only by case.
+- A table in pack `p` declares `p:<type>/<name>`. Shorthand in a reference resolves in the
+  pack's own namespace, then its dependencies in order, then `core` (the order in
+  [References](#references); "shorthand means `core:`" is the special case of a core file).
+  A full `ns:type/name` must have the expected type. Aliases map retired full IDs to current
+  ones; an alias may not name a declared ID.
+- "Shadowing" is a pack's own ID winning its own shorthand. Replacing another pack's ID needs a
+  `patch`, which is not supported yet. A second `[classification]` preset is therefore an error.
+
+**`extends` and merging**
+
+- Biomes, suites, palettes, materials and scatter presets may `extends` a parent of the same type.
+  Overlays and ecotones may not: an overlay's `scatter_add` is its own field, applied to its
+  target.
+- Depth is limited to 8 links, measured by chain length, not by recursion. `kind` is never
+  inherited.
+- Tables merge one level (child keys win). `_replace = true` inside a child table replaces the
+  parent's table instead.
+- `<field>_add` and `<field>_remove` edit the parent's list `field`, for any list field. A
+  removal matches an equal string, or a table whose `preset` or `suite` equals it. Removing
+  something absent is an error, and so is setting `field` together with its `_add` or `_remove`.
+- TOML has no `null`, so the "`null` clears to the type default" rule cannot be written and is
+  not implemented.
+
+**Validation**
+
+- docs/16's checks 1–9 are implemented, except that weight tables are checked as non-negative but
+  normalisation is not reported. docs/17's rules are implemented except three:
+  - 12: zones and profiles are not loaded yet, and their table prefixes are errors;
+  - 13's normalisation report;
+  - 18's symmetric audit (P1-C).
+  docs/17's new rule 19 covers the form of each axis expression.
+- Messages name the file and the entry. A load with any error yields no content; warnings
+  do not block.
+- Every reference in the loaded content is rewritten to its full ID.
+- Module parameter schemas live in `genesis_content::modules`, not in `genesis_gen`, because
+  validation needs them and `genesis_gen` depends on this crate. Two modules exist so far:
+  `rolling_hills` and `dune_field`.
+
+**`DECIDED` (approved by the user 2026-11-14)**
+
+- Content files are parsed with the `toml` crate.
+- A **content digest** covers the resolved content set: the load-ordered packs, every resolved
+  entry in ID order, and the classification preset. It uses the canonical encoding of
+  [03](./03-planet-descriptor.md#core-versus-caches) (tables with sorted keys, tagged values) and
+  `mix64(FNV-1a-64)`. A descriptor will store it next to `contentVersion` from P1-C, so content
+  edited under an unchanged pack version is detected.
+- `contentVersion` is the load-ordered `id@version` list joined with `,`, for example
+  `core@0.1.0`.
+
+---
+
 ## Related
 
 - [03 — The Planet Descriptor](./03-planet-descriptor.md) — the world-data schema.

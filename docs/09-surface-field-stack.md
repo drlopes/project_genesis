@@ -202,8 +202,8 @@ craterDelta(p)  = Σ_k profile_k(|p − c_k|)    // from the crater list, via th
 erosionDelta(p) = lowFrequencyErosion(p)      // climate-driven, from 05 and 06; 0 until climate exists
 ```
 
-`PROPOSED` (P1-A, 2026-11-13; replaces the earlier `Σ_b amplitude_b · type_b · smoothstep(1 −
-d_b / width_b)`): **plates are a soft Voronoi.** A "nearest boundary" sum switches abruptly
+`DECIDED` (P1-A, confirmed by the user 2026-11-13; replaces the earlier `Σ_b amplitude_b · type_b ·
+smoothstep(1 − d_b / width_b)`): **plates are a soft Voronoi.** The numbers stay `PROPOSED`. A "nearest boundary" sum switches abruptly
 wherever the nearest boundary changes, which makes vertical walls along lines from every triple
 junction (the [B-005](../work/BUGS.md) lesson). Instead:
 

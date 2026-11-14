@@ -84,8 +84,9 @@ This gives the crucial visual cue that **Ancient systems look ancient**: heavily
 degraded surfaces. It also gives young volcanic plains that are almost crater-free. The player
 reads planetary age from the surface without being told.
 
-`DECIDED` — cratering is age-driven and province-based. It is baked into the macro field at low
-resolution and refined at query time.
+`DECIDED` — cratering is age-driven and province-based. Craters are part of the coarse relief the
+bake evaluates (hypsometry, sea level) and are added analytically at query time at every LOD;
+they are not stored in the macro pyramid (revised 2026-11-13, see below).
 
 `DECIDED` (from [E1](./spikes/E1-field-cost.md)) — the query-time crater term uses a **spatial
 index** (cube-sphere cells listing the craters whose influence radius overlaps them). A linear scan
@@ -104,11 +105,11 @@ As baked in `genesis_gen` (P1-A, `PROPOSED` numbers):
 - **Index**: 6 × 16 × 16 cells, each listing in ascending order the craters whose influence
   (2 × rim radius) can reach it. The indexed sum is bit-identical to the full sum (tested).
 
-`PROPOSED` (P1-A) — craters are **not** in the macro pyramid: the query adds them analytically at
-every LOD through the index, and the bake includes them when it evaluates the hypsometry. This
-departs from the `DECIDED` line above ("baked into the macro field at low resolution"). A crater
-smaller than the pyramid spacing (~375–470 m) could not be baked into it anyway, and one source
-per term keeps bake and query additive (docs/09). Needs the user's confirmation.
+`DECIDED` (P1-A, confirmed by the user 2026-11-13) — craters are **not** in the macro pyramid: the
+query adds them analytically at every LOD through the index, and the bake includes them when it
+evaluates the hypsometry. This replaces the earlier "baked into the macro field at low
+resolution". A crater smaller than the pyramid spacing (~375–470 m) could not be baked into it
+anyway, and one source per term keeps bake and query additive (docs/09).
 
 ---
 

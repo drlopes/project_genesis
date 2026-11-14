@@ -1,0 +1,8 @@
+[scatter.boulder]
+anchor        = "surface"
+density       = 0.005
+scale         = [1.0, 3.0]
+min_lod       = 3
+max_lod       = 4
+cull_distance = 600
+instance_cap  = 2000

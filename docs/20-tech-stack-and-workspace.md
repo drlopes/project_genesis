@@ -109,9 +109,14 @@ genesis_cli ──┘                                 └───────�
 `PROPOSED` — the crate names and the split between `genesis_gen` and `genesis_edits`. Split
 further when a crate's compile time hurts, not before.
 
-Built so far (2026-11-13): `genesis_core`, `genesis_gen` (rocky bake, P1-A) and `genesis_cli`
-(binary `genesis`, the `descriptor` command). `genesis_gen` does not depend on `genesis_content`
-yet, because that crate does not exist. `serde`, `serde_json` and `thiserror` are workspace
+Built so far (2026-11-14):
+- `genesis_core`;
+- `genesis_content` (pack loading, `extends`, validation, content digest; P1-B);
+- `genesis_gen` (rocky bake, P1-A);
+- `genesis_cli`, binary `genesis`, with the `descriptor` and `validate` commands.
+
+`genesis_gen` does not depend on `genesis_content` yet: the bake reads content from P1-C.
+`toml` is a workspace dependency for content parsing only. `serde`, `serde_json` and `thiserror` are workspace
 dependencies; they are allowed in generation crates because identity never depends on them (the
 canonical encoding in [03](./03-planet-descriptor.md#core-versus-caches) does). `genesis_gen`
 carries the same `clippy.toml` as `genesis_core`.

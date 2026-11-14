@@ -1,0 +1,4 @@
+[ecotone.forest_edge]
+between  = ["temperate_forest", "temperate_grassland"]
+biome    = "forest_edge"
+strength = 0.6

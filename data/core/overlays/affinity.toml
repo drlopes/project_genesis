@@ -1,0 +1,7 @@
+# An affinity overlay (docs/17 "Overlays"); selected by the narrative layer, which is not baked yet.
+[overlay.corrupted_forest]
+target            = "temperate_forest"
+tint              = "#3a2b4d"
+material_override = "corrupted_soil"
+scatter_add       = ["anomalous_growth"]
+scatter_remove    = ["shrub"]

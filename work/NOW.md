@@ -4,7 +4,7 @@ Rules: [work/README.md](README.md). One active goal; everything else is captured
 
 ## Active goal
 
-_None._ P1-A is done; the next goal is the user's choice (see Up next).
+_None._ P1-B is done; P1-C (below) needs scoping with the user.
 
 ## Where we stopped
 
@@ -13,21 +13,26 @@ prints it, golden hashes are pinned in CI. docs/14's Phase 0 exit is met.
 
 ## Waiting on the user
 
-- **Craters out of the macro pyramid** (docs/06): the query adds them analytically at every LOD
-  through the crater index instead of baking them into the pyramid as a `DECIDED` line says.
-  Confirm or reject.
-- **Soft-Voronoi plates** (docs/09, `PROPOSED`): the replacement for the nearest-boundary formula,
-  which makes walls at triple junctions. Confirm or reject.
-- **The next goal**: `genesis_content` (recommended, see Up next).
+_Nothing._ (2026-11-13: the user confirmed soft-Voronoi plates and craters out of the pyramid,
+now `DECIDED` in docs/09 and docs/06.)
 
 ## Up next
 
-1. **`genesis_content`** — content schemas and pack loading, then palette and suite selection in
-   the bake.
+1. **P1-C** — a climate phase in the bake, biosphere, then palette and suite selection with a
+   content digest in the descriptor (needs decisions on the docs/19 and docs/06 gaps: suite
+   selection, palette coverage, lognormal spread).
 2. **B-002** — make `spike_field` and `spike_voxel` clippy-clean, or exempt spikes from linting
    explicitly.
 
 ## Done recently
+
+- 2026-11-14 — **P1-B — `genesis_content`.** Pack loading (manifests, dependency order, shorthand
+  resolution, aliases), `extends` with the docs/16 merge rules, typed schemas with unknown keys
+  rejected, validation of docs/16 checks 1–9 and docs/17 rules 1–19 (gaps listed in docs/16), every
+  reference rewritten to a full ID, the content digest, and module parameter schemas. Starter pack
+  `data/core`: 10 biomes in 9 families, 1 ecotone, 1 overlay, 2 suites, 8 palettes, 11 materials,
+  6 scatter presets. `genesis validate data` runs in CI. 23 tests: each rule rejects a minimal bad
+  input, and they caught an order-dependent depth-limit bug.
 
 - 2026-11-13 — **P1-A — Descriptor bake for a rocky body.** `genesis_gen`: bulk + rotation, ocean
   fraction, plates (soft Voronoi, continuous at junctions), craters (age provinces, power-law

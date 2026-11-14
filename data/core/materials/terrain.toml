@@ -1,0 +1,44 @@
+[material.regolith]
+albedo    = "#8a8279"
+roughness = 0.95
+
+[material.rock]
+albedo      = "#6e6a64"
+roughness   = 0.9
+wet_variant = "rock_wet"
+
+[material.rock_wet]
+albedo    = "#4f4b46"
+roughness = 0.5
+
+[material.soil]
+albedo    = "#5a4632"
+roughness = 0.9
+
+[material.leaf_litter]
+albedo    = "#4b3a24"
+roughness = 0.95
+
+[material.moss]
+albedo    = "#55663a"
+roughness = 0.9
+
+[material.grass]
+albedo    = "#6b7d4a"
+roughness = 0.85
+
+[material.dry_grass]
+albedo    = "#a8955a"
+roughness = 0.85
+
+[material.sand]
+albedo    = "#c9b48a"
+roughness = 0.9
+
+[material.snow]
+albedo    = "#e8ecef"
+roughness = 0.6
+
+[material.corrupted_soil]
+albedo    = "#3a2b4d"
+roughness = 0.8

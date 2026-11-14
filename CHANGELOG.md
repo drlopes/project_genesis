@@ -7,6 +7,11 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
 ## [Unreleased]
 
 ### Changed
+- docs/16 gains "As implemented (`genesis_content`, P1-B)". `DECIDED`: the `toml` crate, the
+  content digest, and the `contentVersion` format. `PROPOSED`: how the gaps are filled (namespace
+  = pack ID, lowercase names, shorthand order, merge details, no `null`), with an honest list of
+  what is not implemented. docs/17 adds rule 19, the `mode` and LOD fields, and `slope_falloff`.
+  docs/19 names the classification preset's keys. docs/20 lists the built crates.
 - docs/03, 04, 05, 06, 09, 11, 13, 14, 20 record the P1-A bake. Decided: the identity hash and its
   canonical encoding. Proposed: the bake's numbers, soft-Voronoi plates, craters kept out of the
   macro pyramid (which departs from a docs/06 `DECIDED` line; awaiting the user), and the
@@ -54,6 +59,18 @@ Versions follow roadmap phases: Phase 0 → `0.1.0`, Phase 1 → `0.2.0`, … (s
   culling boxes cover both morph shapes.
 
 ### Added
+- **`genesis_content`** (P1-B):
+  - content packs with manifests, dependency load order, namespaced IDs, shorthand resolution and
+    aliases;
+  - single-parent `extends` with the docs/16 merge rules (`_replace`, `<field>_add`,
+    `<field>_remove`; depth limited to 8 links);
+  - typed schemas for biomes and variants, ecotones, overlays, suites, palettes, materials,
+    scatter presets and the classification preset, with unknown keys rejected;
+  - module parameter schemas (`rolling_hills`, `dune_field`) and validation with file- and
+    entry-located diagnostics;
+  - references rewritten to full IDs, and the content digest.
+- **`data/core`**, the starter pack: E8's stub content as data.
+- **`genesis validate [dir]`**, run in CI on every push.
 - **`genesis_gen`** (P1-A): the first production bake. `bake_core(SeedChain, &RockyParams)` writes
   identity, bulk, rotation, ocean fraction, geology (plates, craters, hypsometry) and the sea
   level; every other block is an explicit `null`. `bake_caches` builds the macro pyramid

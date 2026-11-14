@@ -1,0 +1,31 @@
+[suite.rolling_hills]
+module        = "rolling_hills"
+feature_scale = 20.0
+
+[suite.rolling_hills.context]
+strata = ["aerial"]
+slope  = [0, 25]
+
+[suite.rolling_hills.params]
+amplitude  = 40.0
+wavelength = 900.0
+
+[suite.dune_seas]
+module        = "dune_field"
+feature_scale = 4.0
+min_lod       = 2
+max_lod       = 4
+scatter       = [{ preset = "boulder", density = 0.002 }]
+
+[suite.dune_seas.context]
+strata     = ["aerial"]
+substrates = ["sand"]
+biomes     = ["savanna", "cold_steppe"]
+slope      = [0, 15]
+
+[suite.dune_seas.params]
+dune_height  = 8.0
+dune_spacing = 120.0
+asymmetry    = 0.7
+dust_cover   = 0.4
+orientation  = [0.3, 0.0, 1.0]

@@ -114,6 +114,8 @@ Fields:
 | `requires_biosphere` | no | Minimum biosphere level (`none`, `microbial`, `complex`, `exotic`) for palette selection |
 | `mosaic` | no | `{ scale = metres, strength = 0.. }`; within-climate patchiness; see [19](./19-biome-classification.md#6-the-prior-and-the-mosaic) |
 | `incompatible_with` | no | Biome IDs that must never border this one; **audit only**, see [19](./19-biome-classification.md#ecotones-replace-adjacency-constraints) |
+| `mode` | no | `all` (default: axis scores multiply) or `any` (maximum); see [19](./19-biome-classification.md#suitability) |
+| `min_lod` / `max_lod` | no | As in [16](./16-data-contracts.md#lod-and-feature-metadata) |
 
 Fields marked **yes** may be inherited through `extends` (except `kind`, which is always
 explicit); the fully resolved entry must have them.
@@ -339,7 +341,7 @@ as biome borders:
 - `strata` — the sample's stratum weight for the listed strata (summed),
 - `substrates` — soft membership: the sum of the sample's substrate weights in the list,
 - `biomes` — the sum of the listed families' weights,
-- `slope` — a range; it takes the same `falloff` as a suitability range (default 5°).
+- `slope` — a range; its soft edge is `slope_falloff` in the context table (default 5°).
 
 The context score is the product of the declared conditions. Suites are weighted by
 `context × weight × landform_bias` and normalised; a context score of zero means zero weight. The terrain is the
@@ -494,6 +496,14 @@ In addition to the shared checks in [16](./16-data-contracts.md):
 17. Ecotone `between` IDs resolve to two different families of the same stratum; the injected
     biome resolves and is in that stratum (warn if it is `selectable`).
 18. `incompatible_with` IDs resolve; the relation is treated as symmetric.
+19. A suitability `range` has a `falloff`; a numeric axis takes `range` or `curve`, an enum axis
+    (`substrate`, `water_body`) takes `any_of` or `none_of`; exactly one form per axis.
+
+As implemented in `genesis_content` (P1-B): all of these except 12 (zones are not loaded yet),
+the normalisation report of 13 (weights are only checked to be non-negative), and the symmetric
+use of 18 (references resolve; the adjacency audit comes with classification in P1-C). Rule 19
+was added because the loader needs it. See
+[16](./16-data-contracts.md#as-implemented-genesis_content-p1-b).
 
 ---
 

@@ -1,0 +1,50 @@
+[scatter.conifer]
+anchor        = "surface"
+density       = 0.015
+scale         = [4.0, 12.0]
+slope_max     = 35
+clustering    = 0.5
+min_lod       = 3
+max_lod       = 4
+cull_distance = 900
+instance_cap  = 4000
+
+[scatter.broadleaf_tree]
+anchor        = "surface"
+density       = 0.02
+scale         = [2.0, 4.0]
+slope_max     = 30
+clustering    = 0.4
+min_lod       = 3
+max_lod       = 4
+cull_distance = 800
+instance_cap  = 4000
+
+[scatter.shrub]
+anchor        = "surface"
+density       = 0.08
+scale         = [0.5, 1.5]
+slope_max     = 40
+min_lod       = 4
+max_lod       = 4
+cull_distance = 200
+instance_cap  = 6000
+
+[scatter.grass_tuft]
+anchor        = "surface"
+density       = 0.6
+scale         = [0.5, 0.8]
+slope_max     = 35
+min_lod       = 4
+max_lod       = 4
+cull_distance = 80
+instance_cap  = 20000
+
+[scatter.anomalous_growth]
+anchor        = "surface"
+density       = 0.01
+scale         = [1.0, 3.0]
+min_lod       = 3
+max_lod       = 4
+cull_distance = 400
+instance_cap  = 1000

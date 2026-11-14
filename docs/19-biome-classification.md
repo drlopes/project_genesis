@@ -465,7 +465,11 @@ zero-score biomes.
 | *palette_drop* | `0.4` | per-body draw below which a family is dropped |
 | *palette_max* | `12` aerial, `8` benthic | palette cap per stratum |
 
-All of these are data, in the classification preset of the core pack, not code constants.
+All of these are data, in the classification preset of the core pack, not code constants: the
+`[classification]` table in `data/core/classification.toml`. Its keys are `sharpness` (*k*),
+`budget` (*K*), `epsilon`, `mosaic_strength`, `mosaic_scale`, `jitter_wavelength`,
+`jitter = { temp, moisture, altitude, slope }`, `strata_blend`, `cave_blend`, `palette_drop`,
+and `palette_max = { aerial, benthic }`. `genesis_content` loads and checks the preset (P1-B).
 
 [E1](./spikes/E1-field-cost.md) measured the classifier at ~265 ns per sample with a palette of 16,
 and found a mean of 2.7 active families per sample (maximum 5). *K* = 4 rarely binds, so it stays.

@@ -1,0 +1,6 @@
+# The core content pack (docs/16 "File layout and manifest").
+id             = "core"
+version        = "0.1.0"
+schema_version = 1
+dependencies   = []
+aliases        = {}
